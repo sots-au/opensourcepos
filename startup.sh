@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Copy default config to a writable temp location
 cp /etc/nginx/sites-available/default /tmp/default
