@@ -36,6 +36,33 @@ if (getcwd() . DIRECTORY_SEPARATOR !== FCPATH) {
 
 /*
  *---------------------------------------------------------------
+ * BLOCK ACCESS TO SENSITIVE FILES
+ *---------------------------------------------------------------
+ */
+$forbiddenExtensions = ['csv', 'txt', 'md', 'yml', 'json', 'lock', 'env'];
+$forbiddenFiles = ['.htaccess', 'error_log', 'LICENSE'];
+
+$requestUri = $_SERVER['REQUEST_URI'];
+$pathInfo = pathinfo($requestUri);
+$basename = basename($requestUri);
+
+// Block by file extension
+if (isset($pathInfo['extension']) && in_array($pathInfo['extension'], $forbiddenExtensions)) {
+    http_response_code(403);
+    exit('Access denied.');
+}
+
+// Block specific files
+if (in_array($basename, $forbiddenFiles)) {
+    http_response_code(403);
+    exit('Access denied.');
+}
+
+
+header("X-Frame-Options: SAMEORIGIN");
+
+/*
+ *---------------------------------------------------------------
  * BOOTSTRAP THE APPLICATION
  *---------------------------------------------------------------
  * This process sets up the path constants, loads and registers
