@@ -1,0 +1,51 @@
+# PHP
+# Test and package your PHP project.
+# Add steps that run tests, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/php
+
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  phpVersion: 8.4
+
+steps:
+- script: |
+    sudo apt-get update
+    sudo apt-get install -y \
+      php$(phpVersion)-json \
+      php$(phpVersion)-gd \
+      php$(phpVersion)-bcmath \
+      php$(phpVersion)-intl \
+      php$(phpVersion)-openssl \
+      php$(phpVersion)-mbstring \
+      php$(phpVersion)-curl \
+      php$(phpVersion)-xml
+    sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+    sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
+    sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
+    sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
+    sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
+    php -version
+  displayName: 'Use PHP version $(phpVersion)'
+  workingDirectory: $(System.DefaultWorkingDirectory)
+
+- script: composer install --no-interaction --prefer-dist
+  workingDirectory: $(System.DefaultWorkingDirectory)
+  displayName: 'composer install'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+    replaceExistingArchive: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
