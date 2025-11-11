@@ -1,0 +1,50 @@
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  phpVersion: '8.2'
+  webAppName: 'new-bavtest'
+  resourceGroup: 'sotsResourceTst'
+  zipFileName: 'ospos.zip'
+
+steps:
+- task: UseNode@1
+  inputs:
+    version: '18.x'
+
+- task: NodeTool@0
+  inputs:
+    versionSpec: '18.x'
+    checkLatest: true
+
+- script: |
+    npm install
+    npm run build
+  displayName: 'Build frontend assets'
+
+- task: UsePHPVersion@0
+  inputs:
+    version: '$(phpVersion)'
+
+- script: |
+    composer install --no-dev --optimize-autoloader
+  displayName: 'Install PHP dependencies'
+
+- script: |
+    mkdir deploy
+    cp -r app system public vendor composer.json .htaccess deploy/
+    cd deploy
+    zip -r ../$(zipFileName) .
+  displayName: 'Package app into ZIP'
+
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'NewBav'
+    appType: 'webAppLinux'
+    appName: '$(webAppName)'
+    package: '$(System.DefaultWorkingDirectory)/$(zipFileName)'
