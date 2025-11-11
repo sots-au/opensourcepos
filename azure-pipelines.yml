@@ -15,14 +15,14 @@ steps:
 - script: |
     sudo apt-get update
     sudo apt-get install -y \
-      php$(phpVersion)-json \
-      php$(phpVersion)-gd \
-      php$(phpVersion)-bcmath \
-      php$(phpVersion)-intl \
-      php$(phpVersion)-openssl \
-      php$(phpVersion)-mbstring \
-      php$(phpVersion)-curl \
-      php$(phpVersion)-xml
+      php-json \
+      php-gd \
+      php-bcmath \
+      php-intl \
+      php-openssl \
+      php-mbstring \
+      php-curl \
+      php-xml
     sudo update-alternatives --set php /usr/bin/php$(phpVersion)
     sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
     sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
