@@ -240,39 +240,11 @@ function get_timeformats(): array
  */
 function get_payment_options(): array
 {
-    $payments = [];
-    $config = config(OSPOS::class)->settings;
-
-    // TODO: This needs to be switched to a switch statement
-    if ($config['payment_options_order'] == 'debitcreditcash') {    // TODO: ===
-        $payments[lang('Sales.debit')] = lang('Sales.debit');
-        $payments[lang('Sales.credit')] = lang('Sales.credit');
-        $payments[lang('Sales.cash')] = lang('Sales.cash');
-    } elseif ($config['payment_options_order'] == 'debitcashcredit') {    // TODO: ===
-        $payments[lang('Sales.debit')] = lang('Sales.debit');
-        $payments[lang('Sales.cash')] = lang('Sales.cash');
-        $payments[lang('Sales.credit')] = lang('Sales.credit');
-    } elseif ($config['payment_options_order'] == 'creditdebitcash') {    // TODO: ===
-        $payments[lang('Sales.credit')] = lang('Sales.credit');
-        $payments[lang('Sales.debit')] = lang('Sales.debit');
-        $payments[lang('Sales.cash')] = lang('Sales.cash');
-    } elseif ($config['payment_options_order'] == 'creditcashdebit') {    // TODO: ===
-        $payments[lang('Sales.credit')] = lang('Sales.credit');
-        $payments[lang('Sales.cash')] = lang('Sales.cash');
-        $payments[lang('Sales.debit')] = lang('Sales.debit');
-    } else { // Default: if ($config['payment_options_order == 'cashdebitcredit')
-        $payments[lang('Sales.cash')] = lang('Sales.cash');
-        $payments[lang('Sales.debit')] = lang('Sales.debit');
-        $payments[lang('Sales.credit')] = lang('Sales.credit');
-    }
-
-    $payments[lang('Sales.due')] = lang('Sales.due');
-    $payments[lang('Sales.check')] = lang('Sales.check');
-
-    // If India (list of country codes include India) then include Unified Payment Interface
-    if (stripos($config['country_codes'], 'IN') !== false) {
-        $payments[lang('Sales.upi')] = lang('Sales.upi');
-    }
+    $payments = [
+        '' => lang('Sales.payment_type_required'),
+        lang('Sales.cash') => lang('Sales.cash'),
+        lang('Sales.credit') => lang('Sales.credit'),
+    ];
 
     return $payments;
 }
@@ -330,6 +302,28 @@ function tax_decimals(): int
 }
 
 /**
+ * Returns the credit card surcharge percentage.
+ *
+ * @return string The surcharge percentage (e.g., '1.4' for 1.4%)
+ */
+function cc_surcharge(): string
+{
+    $config = config(OSPOS::class)->settings;
+    return $config['cc_surcharge'] ?? '1.4';
+}
+
+/**
+ * Returns the number of decimals to use for credit card surcharge calculations.
+ *
+ * @return int The number of decimals to include in the surcharge amount
+ */
+function cc_surcharge_decimals(): int
+{
+    $config = config(OSPOS::class)->settings;
+    return (int)($config['cc_surcharge_decimals'] ?? 4);
+}
+
+/**
  * @param int $date
  * @return string
  */
@@ -380,6 +374,17 @@ function to_currency_tax(?string $number): string
     } else {
         return to_decimals($number, 'currency_decimals', NumberFormatter::CURRENCY);
     }
+}
+
+/**
+ * Formats credit card surcharge amount with configured decimal places.
+ *
+ * @param string|null $number
+ * @return string
+ */
+function to_currency_surcharge(?string $number): string
+{
+    return to_decimals($number, 'cc_surcharge_decimals', NumberFormatter::CURRENCY);
 }
 
 /**

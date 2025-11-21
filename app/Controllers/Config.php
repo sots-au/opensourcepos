@@ -475,7 +475,9 @@ class Config extends Secure_Controller
             'date_or_time_format'   => $this->request->getPost('date_or_time_format') != null,
             'cash_decimals'         => $this->request->getPost('cash_decimals', FILTER_SANITIZE_NUMBER_INT),
             'cash_rounding_code'    => $this->request->getPost('cash_rounding_code'),
-            'financial_year'        => $this->request->getPost('financial_year', FILTER_SANITIZE_NUMBER_INT)
+            'financial_year'        => $this->request->getPost('financial_year', FILTER_SANITIZE_NUMBER_INT),
+            'cc_surcharge'          => $this->request->getPost('cc_surcharge'),
+            'cc_surcharge_decimals' => $this->request->getPost('cc_surcharge_decimals', FILTER_SANITIZE_NUMBER_INT)
         ];
 
         $success = $this->appconfig->batch_save($batch_save_data);

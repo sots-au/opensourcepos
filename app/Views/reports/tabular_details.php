@@ -21,8 +21,13 @@
 </div>
 
 <div id="report_summary">
-    <?php foreach ($overall_summary_data as $name => $value) { ?>
-        <div class="summary_row"><?= lang("Reports.$name") . ': ' . to_currency($value) ?></div>
+    <?php foreach ($overall_summary_data as $name => $value) { 
+        // Use 4 decimal formatting for credit card surcharge fields
+        $formatted_value = ($name === 'cc_surcharge' || $name === 'total_with_surcharge') 
+            ? to_currency_surcharge($value) 
+            : to_currency($value);
+        ?>
+        <div class="summary_row"><?= lang("Reports.$name") . ': ' . $formatted_value ?></div>
     <?php } ?>
 </div>
 
