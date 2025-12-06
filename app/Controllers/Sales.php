@@ -374,6 +374,13 @@ class Sales extends Secure_Controller
         $giftcard = model(Giftcard::class);
         $payment_type = $this->request->getPost('payment_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
+        // Check if payment type is selected
+        if (empty($payment_type)) {
+            $data['error'] = lang('Sales.payment_type_required');
+            $this->_reload($data);
+            return;
+        }
+
         if ($payment_type !== lang('Sales.giftcard')) {
             $rules = ['amount_tendered' => 'trim|required|decimal_locale',];
             $messages = ['amount_tendered' => lang('Sales.must_enter_numeric')];
@@ -692,6 +699,12 @@ class Sales extends Secure_Controller
         $data['discount'] = $this->sale_lib->get_discount();
         $data['payments'] = $this->sale_lib->get_payments();
 
+        if (empty($data['payments'])) {
+            $data['error'] = lang('Sales.payment_type_required');
+            $this->_reload($data);
+            return;
+        }
+
         // Returns 'subtotal', 'total', 'cash_total', 'payment_total', 'amount_due', 'cash_amount_due', 'payments_cover_total'
         $totals = $this->sale_lib->get_totals($tax_details[0]);
         $data['subtotal'] = $totals['subtotal'];
@@ -756,7 +769,8 @@ class Sales extends Secure_Controller
                 $invoice_view = $this->config['invoice_type'];
 
                 // Save the data to the sales table
-                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+                $cc_surcharge = $totals['cc_surcharge'] ?? '0.0000';
+                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $cc_surcharge);
                 $data['sale_id'] = 'POS ' . $data['sale_id_num'];
 
                 // Resort and filter cart lines for printing
@@ -793,7 +807,8 @@ class Sales extends Secure_Controller
                 $data['sale_status'] = SUSPENDED;
                 $sale_type = SALE_TYPE_WORK_ORDER;
 
-                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+                $cc_surcharge = $totals['cc_surcharge'] ?? '0.0000';
+                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $cc_surcharge);
                 $this->sale_lib->set_suspended_id($data['sale_id_num']);
 
                 $data['cart'] = $this->sale_lib->sort_and_filter_cart($data['cart']);
@@ -822,7 +837,8 @@ class Sales extends Secure_Controller
                 $data['sale_status'] = SUSPENDED;
                 $sale_type = SALE_TYPE_QUOTE;
 
-                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+                $cc_surcharge = $totals['cc_surcharge'] ?? '0.0000';
+                $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $cc_surcharge);
                 $this->sale_lib->set_suspended_id($data['sale_id_num']);
 
                 $data['cart'] = $this->sale_lib->sort_and_filter_cart($data['cart']);
@@ -841,7 +857,8 @@ class Sales extends Secure_Controller
                 $sale_type = SALE_TYPE_POS;
             }
 
-            $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+            $cc_surcharge = $totals['cc_surcharge'] ?? '0.0000';
+            $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details, $cc_surcharge);
 
             $data['sale_id'] = 'POS ' . $data['sale_id_num'];
 
@@ -1147,6 +1164,7 @@ class Sales extends Secure_Controller
         $data['total'] = $totals['total'];
         $data['payments_total'] = $totals['payment_total'];
         $data['payments_cover_total'] = $totals['payments_cover_total'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
 
         // cash_mode indicates whether this sale is going to be processed using cash_rounding
         $cash_mode = $this->session->get('cash_mode');
@@ -1173,7 +1191,7 @@ class Sales extends Secure_Controller
         $data['email_receipt'] = $this->sale_lib->is_email_receipt();
 
         if ($customer_info && $this->config['customer_reward_enable']) {
-            $data['payment_options'] = $this->sale->get_payment_options(true, true);
+            $data['payment_options'] = $this->sale->get_payment_options(false, false);
         } else {
             $data['payment_options'] = $this->sale->get_payment_options();
         }
@@ -1520,8 +1538,13 @@ class Sales extends Secure_Controller
 
         $data = [];
         $sales_taxes = [[], []];
+        
+        // Calculate totals to get cc_surcharge
+        $tax_details = $this->tax_lib->get_taxes($cart);
+        $totals = $this->sale_lib->get_totals($tax_details[0]);
+        $cc_surcharge = $totals['cc_surcharge'] ?? '0.0000';
 
-        if ($this->sale->save_value($sale_id, $sale_status, $cart, $customer_id, $employee_id, $comment, $invoice_number, $work_order_number, $quote_number, $sale_type, $payments, $dinner_table, $sales_taxes) == '-1') {
+        if ($this->sale->save_value($sale_id, $sale_status, $cart, $customer_id, $employee_id, $comment, $invoice_number, $work_order_number, $quote_number, $sale_type, $payments, $dinner_table, $sales_taxes, $cc_surcharge) == '-1') {
             $data['error'] = lang('Sales.unsuccessfully_suspended_sale');
         } else {
             $data['success'] = lang('Sales.successfully_suspended_sale');

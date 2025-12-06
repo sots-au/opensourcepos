@@ -36,13 +36,16 @@ class Detailed_sales extends Report
                 ['quantity'      => lang('Reports.quantity')],
                 ['employee_name' => lang('Reports.sold_by')],
                 ['customer_name' => lang('Reports.sold_to')],
-                ['subtotal'      => lang('Reports.subtotal'), 'sorter' => 'number_sorter'],
-                ['tax'           => lang('Reports.tax'), 'sorter' => 'number_sorter'],
-                ['total'         => lang('Reports.total'), 'sorter' => 'number_sorter'],
-                ['cost'          => lang('Reports.cost'), 'sorter' => 'number_sorter'],
-                ['profit'        => lang('Reports.profit'), 'sorter' => 'number_sorter'],
-                ['payment_type'  => lang('Reports.payment_type'), 'sortable' => false],
-                ['comment'       => lang('Reports.comments')]
+                ['subtotal'             => lang('Reports.subtotal'), 'sorter' => 'number_sorter'],
+                ['tax'                  => lang('Reports.tax'), 'sorter' => 'number_sorter'],
+                ['total'                => lang('Reports.total'), 'sorter' => 'number_sorter'],
+                ['cc_surcharge'         => lang('Config.cc_surcharge'), 'sorter' => 'number_sorter'],
+                ['total_with_surcharge' => lang('Reports.total_with_surcharge'), 'sorter' => 'number_sorter'],
+                ['cost'                 => lang('Reports.cost'), 'sorter' => 'number_sorter'],
+                ['profit'               => lang('Reports.profit'), 'sorter' => 'number_sorter'],
+                ['payment_type'         => lang('Reports.payment_type'), 'sortable' => false],
+                ['stock_location'       => lang('Reports.stock_location')],
+                ['comment'              => lang('Reports.comments')]
             ],
             'details' => [
                 lang('Reports.name'),
@@ -79,9 +82,12 @@ class Detailed_sales extends Report
             SUM(subtotal) AS subtotal,
             SUM(tax) AS tax,
             SUM(total) AS total,
+            MAX(cc_surcharge) AS cc_surcharge,
+            SUM(total) + MAX(cc_surcharge) AS total_with_surcharge,
             SUM(cost) AS cost,
             SUM(profit) AS profit,
             MAX(payment_type) AS payment_type,
+            MAX(item_location) AS stock_location,
             MAX(sale_status) AS sale_status,
             comment');
         $builder->where('sale_id', $sale_id);
@@ -114,9 +120,12 @@ class Detailed_sales extends Report
             SUM(subtotal) AS subtotal,
             SUM(tax) AS tax,
             SUM(total) AS total,
+            MAX(cc_surcharge) AS cc_surcharge,
+            SUM(total) + MAX(cc_surcharge) AS total_with_surcharge,
             SUM(cost) AS cost,
             SUM(profit) AS profit,
             MAX(payment_type) AS payment_type,
+            MAX(item_location) AS stock_location,
             MAX(comment) AS comment');
 
         if ($inputs['location_id'] != 'all') {    // TODO: Duplicated code
@@ -260,6 +269,64 @@ class Detailed_sales extends Report
                 break;
         }
 
-        return $builder->get()->getRowArray();
+        $result = $builder->get()->getRowArray();
+        
+        // Calculate cc_surcharge sum separately (one per sale, not per item)
+        $surcharge_builder = $this->db->table('sales_items_temp');
+        $surcharge_builder->selectMax('cc_surcharge');
+        $surcharge_builder->groupBy('sale_id');
+        
+        if ($inputs['location_id'] != 'all') {
+            $surcharge_builder->where('item_location', $inputs['location_id']);
+        }
+        
+        switch ($inputs['sale_type']) {
+            case 'complete':
+                $surcharge_builder->where('sale_status', COMPLETED);
+                $surcharge_builder->groupStart();
+                $surcharge_builder->where('sale_type', SALE_TYPE_POS);
+                $surcharge_builder->orWhere('sale_type', SALE_TYPE_INVOICE);
+                $surcharge_builder->orWhere('sale_type', SALE_TYPE_RETURN);
+                $surcharge_builder->groupEnd();
+                break;
+
+            case 'sales':
+                $surcharge_builder->where('sale_status', COMPLETED);
+                $surcharge_builder->groupStart();
+                $surcharge_builder->where('sale_type', SALE_TYPE_POS);
+                $surcharge_builder->orWhere('sale_type', SALE_TYPE_INVOICE);
+                $surcharge_builder->groupEnd();
+                break;
+
+            case 'quotes':
+                $surcharge_builder->where('sale_status', SUSPENDED);
+                $surcharge_builder->where('sale_type', SALE_TYPE_QUOTE);
+                break;
+
+            case 'work_orders':
+                $surcharge_builder->where('sale_status', SUSPENDED);
+                $surcharge_builder->where('sale_type', SALE_TYPE_WORK_ORDER);
+                break;
+
+            case 'canceled':
+                $surcharge_builder->where('sale_status', CANCELED);
+                break;
+
+            case 'returns':
+                $surcharge_builder->where('sale_status', COMPLETED);
+                $surcharge_builder->where('sale_type', SALE_TYPE_RETURN);
+                break;
+        }
+        
+        $surcharges = $surcharge_builder->get()->getResultArray();
+        $total_surcharge = '0.0000';
+        foreach ($surcharges as $row) {
+            $total_surcharge = bcadd($total_surcharge, $row['cc_surcharge'], 4);
+        }
+        
+        $result['cc_surcharge'] = $total_surcharge;
+        $result['total_with_surcharge'] = bcadd($result['total'], $total_surcharge, 2);
+        
+        return $result;
     }
 }

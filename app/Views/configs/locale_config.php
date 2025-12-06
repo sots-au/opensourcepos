@@ -81,7 +81,9 @@
                         [
                             '0' => '0',
                             '1' => '1',
-                            '2' => '2'
+                            '2' => '2',
+                            '3' => '3',
+                            '4' => '4'
                         ],
                         $config['currency_decimals'],
                         ['class' => 'form-control input-sm']
@@ -154,6 +156,41 @@
                         $rounding_options,
                         $config['cash_rounding_code'],
                         'class="form-control input-sm"'
+                    ) ?>
+                </div>
+            </div>
+
+            <div class="form-group form-group-sm">
+                <?= form_label(lang('Config.cc_surcharge'), 'cc_surcharge', ['class' => 'control-label col-xs-2']) ?>
+                <div class="col-xs-2">
+                    <?= form_input([
+                        'name'  => 'cc_surcharge',
+                        'id'    => 'cc_surcharge',
+                        'class' => 'form-control input-sm',
+                        'value' => $config['cc_surcharge']
+                    ]) ?>
+                </div>
+                <div class="col-xs-1">
+                    <label class="control-label">
+                        <span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" data-placement="right" title="<?= lang('Config.cc_surcharge_tooltip') ?>"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group form-group-sm">
+                <?= form_label(lang('Config.cc_surcharge_decimals'), 'cc_surcharge_decimals', ['class' => 'control-label col-xs-2']) ?>
+                <div class="col-xs-2">
+                    <?= form_dropdown(
+                        'cc_surcharge_decimals',
+                        [
+                            '0' => '0',
+                            '1' => '1',
+                            '2' => '2',
+                            '3' => '3',
+                            '4' => '4'
+                        ],
+                        $config['cc_surcharge_decimals'],
+                        ['class' => 'form-control input-sm']
                     ) ?>
                 </div>
             </div>
