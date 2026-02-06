@@ -30,9 +30,12 @@ use App\Models\Employee;
         // Load the preset daterange picker
         <?= view('partial/daterangepicker') ?>
         // Set the beginning of time as starting date
-        $('#daterangepicker').data('daterangepicker').setStartDate("<?php echo date($this->config->item('dateformat'), mktime(0,0,0,date("m"),date("d")-183,date("Y")));?>");
-        // Update the hidden inputs with the selected dates before submitting the search data
+        $('#daterangepicker').data('daterangepicker').setStartDate("<?php echo date(config('App')->dateformat, mktime(0,0,0,date("m"),date("d")-183,date("Y")));?>");
+
+
         var start_date = "<?php echo date('Y-m-d', mktime(0,0,0,date("m"),date("d")-183,date("Y")));?>";
+        // Update the hidden inputs with the selected dates before submitting the search data
+        // var start_date = "<?php echo date('Y-m-d', mktime(0,0,0,date("m"),date("d")-183,date("Y")));?>";
         $("#daterangepicker").on('apply.daterangepicker', function(ev, picker) {
             table_support.refresh();
         });
