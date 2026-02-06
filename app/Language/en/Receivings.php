@@ -25,6 +25,7 @@ return [
     "find_or_scan_item"            => "Find or Scan Item",
     "find_or_scan_item_or_receipt" => "Find or Scan Item or Receipt",
     "id"                           => "Receiving ID",
+    "receivings_import_items_csv"  => "Import receiving items from CSV";
     "item_name"                    => "Item Name",
     "mode"                         => "Receiving Mode",
     "new_supplier"                 => "New Supplier",

@@ -1689,4 +1689,147 @@ class Sales extends Secure_Controller
 
         return null;
     }
+    	/*
+	 Items import from csv spreadsheet
+	 */
+	public function csv()
+	{
+		$name = 'import_sales_items.csv';
+		$data = $this->generate_import_sales_items_csv();
+		force_download($name, $data, TRUE);
+	}
+
+	public function csv_import()
+	{
+		$this->load->view('sales/form_csv_import', NULL);
+	}
+
+	/**
+	 * Imports items from CSV formatted file.
+	 */
+	public function do_csv_import()
+	{
+		if($_FILES['file_path']['error'] != UPLOAD_ERR_OK)
+		{
+			echo json_encode(array('success' => FALSE, 'message' => $this->lang->line('items_csv_import_failed')));
+		}
+		else
+		{
+			if(file_exists($_FILES['file_path']['tmp_name']))
+			{
+				$line_array	= get_csv_file($_FILES['file_path']['tmp_name']);
+				$failCodes	= array();
+				$keys		= $line_array[0];
+
+				$this->db->trans_begin();
+				for($i = 1; $i < count($line_array); $i++)
+				{
+					$invalidated	= FALSE;
+					$line 			= array_combine($keys,$this->xss_clean($line_array[$i]));	//Build a XSS-cleaned associative array with the row to use to assign values
+
+					if(!empty($line))
+					{
+						$item_number   = $line['Id'];
+						$item_quantity = $line['Quantity'];
+                        $item_location = $this->sale_lib->get_sale_location();
+						$discount      = $this->config->item('default_sales_discount');
+						$discount_type = $this->config->item('default_sales_discount_type');
+
+
+						if($item_number != '')
+						{
+							$invalidated = $this->Item->item_number_exists($item_number);
+						}
+
+						//Sanity check of data
+						if(!$invalidated)
+						{
+							$invalidated = $this->data_error_check($line);
+						}
+					}
+					else
+					{
+						$invalidated = TRUE;
+					}
+
+
+					//Save to database
+					if($invalidated || !$this->sale_lib->add_item($item_number, $item_quantity, $item_location, $discount, $discount_type))
+					{
+						$failed_row = $i+1;
+						$failCodes[] = $failed_row;
+						log_message("ERROR","CSV Item import failed on line ". $failed_row .". This item was not imported.");
+					}
+				}
+
+				if(count($failCodes) > 0)
+				{
+					$message = $this->lang->line('items_csv_import_partially_failed', count($failCodes), implode(', ', $failCodes));
+					$this->db->trans_rollback();
+					echo json_encode(array('success' => FALSE, 'message' => $message));
+				}
+				else
+				{
+					$this->db->trans_commit();
+					echo json_encode(array('success' => TRUE, 'message' => $this->lang->line('items_csv_import_success')));
+				}
+			}
+			else
+			{
+				echo json_encode(array('success' => FALSE, 'message' => $this->lang->line('items_csv_import_nodata_wrongformat')));
+			}
+		}
+	}
+
+	/**
+	 * Checks the entire line of data for errors
+	 *
+	 * @param	array	$line
+	 *
+	 * @return	bool	Returns FALSE if all data checks out and TRUE when there is an error in the data
+	 */
+	private function data_error_check($line)
+	{
+		//Check for empty required fields
+		$check_for_empty = array(
+			$line['Id'],
+			$line['Quantity']
+		);
+
+		if(in_array('',$check_for_empty,true))
+		{
+			log_message("ERROR","Empty required value");
+			return TRUE;	//Return fail on empty required fields
+		}
+
+		//Build array of fields to check for numerics
+		$check_for_numeric_values = array(
+			$line['Id'],
+			$line['Quantity']
+		);
+
+		//Check for non-numeric values which require numeric
+		foreach($check_for_numeric_values as $value)
+		{
+			if(!is_numeric($value) && $value != '')
+			{
+				log_message("ERROR","non-numeric: '$value' when numeric is required");
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * Generates the header content for the import_sales_items.csv file
+	 *
+	 * @return	string						Comma separated headers for the CSV file
+	 */
+	function generate_import_sales_items_csv()
+	{
+		$csv_headers = pack("CCC",0xef,0xbb,0xbf);	//Encode the Byte-Order Mark (BOM) so that UTF-8 File headers display properly in Microsoft Excel
+		$csv_headers .= 'Id,"Item Name","Item Location","Item Code",Language,Category,Quantity,"Stock Location"';
+		return $csv_headers;
+	}
 }

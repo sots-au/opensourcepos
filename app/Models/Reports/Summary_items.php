@@ -10,7 +10,11 @@ class Summary_items extends Summary_report
     protected function _get_data_columns(): array    // TODO: Hungarian notation
     {
         return [
+            ['item_id'  => lang('Reports.item_id')],
             ['item_name'  => lang('Reports.item')],
+            ['item_location'  => lang('Reports.item_location')],
+            ['item_code'  => lang('Reports.item_code')],
+            ['item_language'  => lang('Reports.item_language')],
             ['category'   => lang('Reports.category')],
             ['cost_price' => lang('Reports.cost_price'), 'sorter' => 'number_sorter'],
             ['unit_price' => lang('Reports.unit_price'), 'sorter' => 'number_sorter'],
@@ -33,6 +37,7 @@ class Summary_items extends Summary_report
         parent::_select($inputs, $builder);    // TODO: hungarian notation
 
         $builder->select('
+                MAX(items.item_id) AS item_id,
                 MAX(items.name) AS name,
                 MAX(items.category) AS category,
                 MAX(items.cost_price) AS cost_price,

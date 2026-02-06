@@ -28,6 +28,10 @@ use App\Models\Reports\Summary_taxes;
 use Config\OSPOS;
 use Config\Services;
 
+define('ITEM_LANGUAGE_DEFINTION_ID', 1);
+define('ITEM_LOCATION_DEFINITION_ID', 4);
+define('ITEM_CODE_DEFINTION_ID', 5);
+
 class Reports extends Secure_Controller
 {
     private Attribute $attribute;
@@ -149,7 +153,8 @@ class Reports extends Secure_Controller
                 'tax'       => to_currency_tax($row['tax']),
                 'total'     => to_currency($row['total']),
                 'cost'      => to_currency($row['cost']),
-                'profit'    => to_currency($row['profit'])
+                'profit'    => to_currency($row['profit']),
+				'location_name' => $this->Stock_location->get_location_name($row['location_id'])
             ];
         }
 
@@ -367,7 +372,11 @@ class Reports extends Secure_Controller
 
         foreach ($report_data as $row) {
             $tabular_data[] = [
+                'item_id' => $row['item_id'],
                 'item_name'  => $row['name'],
+                'item_location' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+				'item_code' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+                'item_language' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
                 'category'   => $row['category'],
                 'cost_price' => $row['cost_price'],
                 'unit_price' => $row['unit_price'],
@@ -1299,6 +1308,7 @@ class Reports extends Secure_Controller
                 'profit'        => to_currency($row['profit']),
                 'payment_type'  => $row['payment_type'],
                 'comment'       => $row['comment'],
+                'location_name' => $this->Stock_location->get_location_name($row['location_id']),
                 'edit'          => anchor(
                     'sales/edit/' . $row['sale_id'],
                     '<span class="glyphicon glyphicon-edit"></span>',
@@ -1830,25 +1840,19 @@ class Reports extends Secure_Controller
             ];
 
             foreach ($report_data['details'][$key] as $drow) {
-                $quantity_purchased = to_quantity_decimals($drow['quantity_purchased']);
-                if ($show_locations) {
-                    $quantity_purchased .= ' [' . $this->stock_location->get_location_name($drow['item_location']) . ']';
-                }
 
                 $attribute_values = expand_attribute_values($definition_names, $drow);
 
                 $details_data[$row['sale_id']][] = array_merge([
+                    $drow['item_id'],
                     $drow['name'],
+					$this->Attribute->get_attribute_value($drow['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+					$this->Attribute->get_attribute_value($drow['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+					$drow['item_cost_price'],
+					$drow['item_unit_price'],
                     $drow['category'],
-                    $drow['item_number'],
-                    $drow['description'],
-                    $quantity_purchased,
-                    to_currency($drow['subtotal']),
-                    to_currency_tax($drow['tax']),
-                    to_currency($drow['total']),
-                    to_currency($drow['cost']),
-                    to_currency($drow['profit']),
-                    ($drow['discount_type'] == PERCENT) ? $drow['discount'] . '%' : to_currency($drow['discount'])
+					to_quantity_decimals($drow['quantity_purchased']),
+					$this->Stock_location->get_location_name($drow['item_location'])
                 ], $attribute_values);
             }
 
@@ -2012,10 +2016,13 @@ class Reports extends Secure_Controller
         $tabular_data = [];
         foreach ($report_data as $row) {
             $tabular_data[] = [
+                'item_id' => $row['item_id'],
                 'item_name'     => $row['name'],
-                'item_number'   => $row['item_number'],
+				'item_location' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+				'item_code' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+                'item_language' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
+                'category' => $row['category'],
                 'quantity'      => to_quantity_decimals($row['quantity']),
-                'reorder_level' => to_quantity_decimals($row['reorder_level']),
                 'location_name' => $row['location_name']
             ];
         }
@@ -2067,16 +2074,16 @@ class Reports extends Secure_Controller
         $tabular_data = [];
         foreach ($report_data as $row) {
             $tabular_data[] = [
+                'item_id' => $row['item_id'],
                 'item_name'         => $row['name'],
-                'item_number'       => $row['item_number'],
+				'item_location' => $row['loc_attribute_value'],
+				'item_code' => $row['code_attribute_value'],
+				'item_language' => $row['lang_attribute_value'],
                 'category'          => $row['category'],
                 'quantity'          => to_quantity_decimals($row['quantity']),
-                'low_sell_quantity' => to_quantity_decimals($row['low_sell_quantity']),
-                'reorder_level'     => to_quantity_decimals($row['reorder_level']),
-                'location_name'     => $row['location_name'],
-                'cost_price'        => to_currency($row['cost_price']),
-                'unit_price'        => to_currency($row['unit_price']),
-                'subtotal'          => to_currency($row['sub_total_value'])
+                'cost_price' => to_currency($row['cost_price']),
+				'subtotal' => to_currency($row['sub_total_value']),
+                'location_name' => $row['location_name']
             ];
         }
 

@@ -112,26 +112,16 @@ if (isset($error_message)) {
     </div>
 
     <table id="items">
+        <table class="table" id="export">
         <tr>
-            <th><?= lang('Sales.item_number') ?></th>
-            <?php
-            $invoice_columns = 6;
-            if ($include_hsn) {
-                $invoice_columns += 1;
-            ?>
-                <th><?= lang('Sales.hsn') ?></th>
-            <?php } ?>
-            <th><?= lang('Sales.item_name') ?></th>
-            <th><?= lang('Sales.quantity') ?></th>
-            <th><?= lang('Sales.price') ?></th>
-            <th><?= lang('Sales.discount') ?></th>
-            <?php
-            if ($discount > 0) {
-                $invoice_columns += 1;
-            ?>
-                <th><?= lang('Sales.customer_discount') ?></th>
-            <?php } ?>
-            <th><?= lang('Sales.total') ?></th>
+			<th><?php echo lang('Reports.item_id'); ?></th>
+			<th><?php echo lang('Reports.item_name'); ?></th>
+			<th><?php echo lang('Reports.item_location'); ?></th>
+			<th><?php echo lang('Reports.item_code'); ?></th>
+			<th><?php echo lang('Reports.item_language'); ?></th>
+			<th><?php echo lang('Reports.category'); ?></th>
+			<th><?php echo lang('Reports.quantity'); ?></th>
+			<th><?php echo lang('Reports.stock_location'); ?></th>
         </tr>
 
         <?php
@@ -139,24 +129,15 @@ if (isset($error_message)) {
             if ($item['print_option'] == PRINT_YES) {
         ?>
                 <tr class="item-row">
-                    <td><?= esc($item['item_number']) ?></td>
-                    <?php if ($include_hsn): ?>
-                        <td style="text-align: center;"><?= esc($item['hsn_code']) ?></td>
-                    <?php endif; ?>
-                    <td class="item-name"><?= ($item['is_serialized'] || $item['allow_alt_description']) && !empty($item['description']) ? $item['description'] : $item['name'] . ' ' . $item['attribute_values'] ?></td>
-                    <td style="text-align: center;"><?= to_quantity_decimals($item['quantity']) ?></td>
-                    <td><?= to_currency($item['price']) ?></td>
-                    <td style="height: center;"><?= ($item['discount_type'] == FIXED) ? to_currency($item['discount']) : to_decimals($item['discount']) . '%' ?></td>
-                    <?php if ($discount > 0): ?>
-                        <td style="text-align: center;"><?= to_currency($item['discounted_total'] / $item['quantity']) ?></td>
-                    <?php endif; ?>
-                    <td style="border-right: solid 1px; text-align: right;"><?= to_currency($item['discounted_total']) ?></td>
+                    <td><?php echo $item['item_id']; ?></td>
+					<td><?php echo $item['item_name']; ?></td>
+					<td><?php echo $item['item_location']; ?></td>
+					<td><?php echo $item['item_code']; ?></td>
+					<td><?php echo $item['item_language']; ?></td>
+					<td><?php echo $item['category']; ?></td>
+					<td><?php echo $item['quantity']; ?></td>
+					<td><?php echo $item['location_name']; ?></td>
                 </tr>
-                <?php if ($item['is_serialized']) { ?>
-                    <tr class="item-row">
-                        <td class="item-description" colspan="<?= $invoice_columns - 1 ?>"></td>
-                        <td style="text-align: center;"><?= $item['serialnumber']    // TODO: serialnumber does not match variable naming conventions for this project ?></td>
-                    </tr>
         <?php
                 }
             }

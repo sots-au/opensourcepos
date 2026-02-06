@@ -30,11 +30,7 @@ $(document).ready(function()
 				success:function(response)
 				{
 					dialog_support.hide();
-					if (response.success) {
-						location.href = "<?php echo site_url('receivings'); ?>";
-					} else {
-						$.notify(response.message, { type: 'danger'} );
-					}
+					$.notify(response.message, { type: response.success ? 'success' : 'danger'} );
 				},
 				dataType: 'json'
 			});
