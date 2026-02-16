@@ -73,7 +73,10 @@
                 onExpandRow: function(index, row, $detail) {
                     $detail.html('<table></table>').find("table").bootstrapTable({
                         columns: <?= transform_headers_readonly(esc($headers['details'])) ?>,
-                        data: details_data[(!isNaN(row.id) && row.id) || $(row[0] || row.id).text().replace(/(POS|RECV)\s*/g, '')]
+                        data: details_data[(!isNaN(row.id) && row.id) || $(row[0] || row.id).text().replace(/(POS|RECV)\s*/g, '')],
+					    showExport: true,
+					    exportDataType: 'all',
+					    exportTypes: ['excel', 'csv', 'pdf']
                     });
 
                     <?php if ($config['customer_reward_enable'] && !empty($details_data_rewards)) { ?>

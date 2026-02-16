@@ -7,18 +7,6 @@
  */
 ?>
 
-<div class="form-group form-group-sm">
-    <?= form_label(lang('Attributes.definition_name'), 'definition_name_label', ['class' => 'control-label col-xs-3']) ?>
-    <div class="col-xs-8">
-        <?= form_dropdown([
-            'name'     => 'definition_name',
-            'options'  => $definition_names,
-            'selected' => -1,
-            'class'    => 'form-control',
-            'id'       => 'definition_name'
-        ]) ?>
-    </div>
-</div>
 
 <?php foreach ($definition_values as $definition_id => $definition_value) { ?>
 
@@ -91,8 +79,6 @@
                         break;
                 }
                 ?>
-                <span class="input-group-addon input-sm btn btn-default remove_attribute_btn">
-                    <span class="glyphicon glyphicon-trash"></span>
                 </span>
             </div>
         </div>
@@ -104,13 +90,6 @@
     (function() {
         <?= view('partial/datepicker_locale', ['config' => '{ minView: 2, format: "' . dateformat_bootstrap($config['dateformat'] . '"}')]) ?>
 
-        var enable_delete = function() {
-            $('.remove_attribute_btn').click(function() {
-                $(this).parents('.form-group').remove();
-            });
-        };
-
-        enable_delete();
 
         $("input[name*='attribute_links']").change(function() {
             var definition_id = $(this).data('definition-id');
@@ -129,26 +108,5 @@
             delay: 10
         });
 
-        var definition_values = function() {
-            var result = {};
-            $("[name*='attribute_links'").each(function() {
-                var definition_id = $(this).data('definition-id');
-                result[definition_id] = $(this).val();
-            });
-            return result;
-        };
-
-        var refresh = function() {
-            var definition_id = $("#definition_name option:selected").val();
-            var attribute_values = definition_values();
-            attribute_values[definition_id] = '';
-            $('#attributes').load('<?= "items/attributes/$item_id" ?>', {
-                'definition_ids': JSON.stringify(attribute_values)
-            }, enable_delete);
-        };
-
-        $('#definition_name').change(function() {
-            refresh();
-        });
     })();
 </script>

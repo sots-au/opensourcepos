@@ -18,10 +18,13 @@ class Inventory_low extends Report
     public function getDataColumns(): array
     {
         return [
+            ['item_id'       => lang('Reports.item_id')],
             ['item_name'     => lang('Reports.item_name')],
-            ['item_number'   => lang('Reports.item_number')],
+            ['item_location' => lang('Reports.item_location')],
+			['item_code'     => lang('Reports.item_code')],
+            ['item_language' => lang('Reports.item_language')],
+            ['category'      => lang('Reports.category')],
             ['quantity'      => lang('Reports.quantity')],
-            ['reorder_level' => lang('Reports.reorder_level')],
             ['location_name' => lang('Reports.stock_location')]
         ];
     }
@@ -34,9 +37,9 @@ class Inventory_low extends Report
     {    // TODO: convert to using QueryBuilder. Use App/Models/Reports/Summary_taxes.php getData() as a reference template
         $item = model(Item::class);
         $query = $this->db->query("SELECT " . $item->get_item_name('name') . ",
-            items.item_number,
+            items.item_id,
+            items.category,
             item_quantities.quantity,
-            items.reorder_level,
             stock_locations.location_name
             FROM " . $this->db->prefixTable('items') . " AS items
             JOIN " . $this->db->prefixTable('item_quantities') . " AS item_quantities ON items.item_id = item_quantities.item_id

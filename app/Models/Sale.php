@@ -579,8 +579,8 @@ class Sale extends Model
                 'sale_id'         => $sale_id,
                 'payment_type'    => $payment['payment_type'],
                 'payment_amount'  => $payment['payment_amount'],
-                'cash_refund'     => $payment['cash_refund'],
-                'cash_adjustment' => $payment['cash_adjustment'],
+                'cash_refund'     => $payment['cash_refund'] ?? 0,
+                'cash_adjustment' => $payment['cash_adjustment'] ?? CASH_ADJUSTMENT_FALSE,
                 'employee_id'     => $employee_id
             ];
 

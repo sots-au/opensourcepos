@@ -17,6 +17,7 @@ use ReflectionException;
 
 class Receivings extends Secure_Controller
 {
+    protected $helpers = ['file', 'importfile'];
     private Receiving_lib $receiving_lib;
     private Token_lib $token_lib;
     private Barcode_lib $barcode_lib;
@@ -519,4 +520,194 @@ class Receivings extends Secure_Controller
 
         $this->_reload();    // TODO: Hungarian Notation
     }
+
+
+
+    /*
+	 Items import from csv spreadsheet
+	 */
+	public function csv()
+	{
+		$name = 'import_receiving_items.csv';
+		$data = $this->generate_import_receiving_items_csv();
+		return $this->response->download($name, $data, false)
+			->setHeader('Content-Type', 'text/csv; charset=UTF-8');
+	}
+
+	public function getCsvImport()
+	{
+		echo view('receivings/form_csv_import');
+	}
+
+
+    	/**
+	 * Imports items from CSV formatted file.
+	 */
+	public function postDoCsvImport()
+	{
+		try {
+			$file = $this->request->getFile('file_path');
+			
+			if (!$file || $file->getError() != UPLOAD_ERR_OK) {
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
+				return;
+			}
+
+			if($file->isValid())
+			{
+				$line_array	= get_csv_file($file->getTempName());
+				if(empty($line_array)) {
+					echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_nodata_wrongformat')));
+					return;
+				}
+				
+				$failCodes	= array();
+				$debug_info = array();
+
+				$db = \Config\Database::connect();
+				$db->transBegin();
+				for($i = 0; $i < count($line_array); $i++)
+				{
+					$invalidated	= FALSE;
+					$line 			= $this->cleanArray($line_array[$i]);	//Clean the associative array from the CSV
+
+					$debug_info[$i] = "Row " . ($i+1) . ": ";
+
+					if(!empty($line))
+					{
+						$item_number   = $line['Id'] ?? '';
+						$item_quantity = $line['Quantity'] ?? '';
+						
+						if(empty($item_number) || empty($item_quantity)) {
+							$invalidated = TRUE;
+							$debug_info[$i] .= "Empty item_number or quantity. ";
+						} else {
+							$item_location = $this->receiving_lib->get_stock_source();
+							$discount      = $this->config['default_receivings_discount'] ?? 0;
+							$discount_type = $this->config['default_receivings_discount_type'] ?? PERCENTAGE;
+
+							if(!$this->item->item_number_exists($item_number))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Item '$item_number' does not exist. ";
+							}
+
+							//Sanity check of data
+							if(!$invalidated)
+							{
+								$invalidated = $this->data_error_check($line);
+								if($invalidated) {
+									$debug_info[$i] .= "Data validation failed. ";
+								}
+							}
+
+							//Save to database
+							if(!$invalidated && !$this->receiving_lib->add_item($item_number, $item_quantity, $item_location, $discount, $discount_type))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Failed to add item to database. ";
+							}
+						}
+					}
+					else
+					{
+						$invalidated = TRUE;
+						$debug_info[$i] .= "Empty line. ";
+					}
+
+					if($invalidated) {
+						$failed_row = $i+1;
+						$failCodes[] = $failed_row;
+					}
+				}
+
+				if(count($failCodes) > 0)
+				{
+					$message = lang('Items.csv_import_partially_failed', [count($failCodes), implode(', ', $failCodes)]);
+					$debug_msg = " Debug: " . implode(" | ", $debug_info);
+					$db->transRollback();
+					echo json_encode(array('success' => FALSE, 'message' => $message . $debug_msg));
+				}
+				else
+				{
+					$db->transCommit();
+					echo json_encode(array('success' => TRUE, 'message' => lang('Items.csv_import_success')));
+				}
+			}
+			else
+			{
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
+			}
+		} catch(\Exception $e) {
+			echo json_encode(array('success' => FALSE, 'message' => 'CSV Import Error: ' . $e->getMessage() . ' at line ' . $e->getLine()));
+		}
+	}
+
+	/**
+	 * Sanitize array values against XSS
+	 * 
+	 * @param	array	$data
+	 * @return	array	Cleaned array
+	 */
+	private function cleanArray($data)
+	{
+		$cleaned = array();
+		foreach($data as $key => $value) {
+			$cleaned[$key] = esc($value);
+		}
+		return $cleaned;
+	}
+
+	/**
+	 * Checks the entire line of data for errors
+	 *
+	 * @param	array	$line
+	 *
+	 * @return	bool	Returns FALSE if all data checks out and TRUE when there is an error in the data
+	 */
+	private function data_error_check($line)
+	{
+		//Check for empty required fields
+		$check_for_empty = array(
+            $line['Id'],
+			$line['Quantity'],
+			$line['Stock Location']
+		);
+
+		if(in_array('',$check_for_empty,true))
+		{
+			log_message("ERROR","Empty required value");
+			return TRUE;	//Return fail on empty required fields
+		}
+
+		//Build array of fields to check for numerics
+		$check_for_numeric_values = array(
+			$line['Id'],
+			$line['Quantity']
+		);
+
+		//Check for non-numeric values which require numeric
+		foreach($check_for_numeric_values as $value)
+		{
+			if(!is_numeric($value) && $value != '')
+			{
+				log_message("ERROR","non-numeric: '$value' when numeric is required");
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * Generates the header content for the import_receiving_items.csv file
+	 *
+	 * @return	string						Comma separated headers for the CSV file
+	 */
+	function generate_import_receiving_items_csv()
+	{
+		$csv_headers = pack("CCC",0xef,0xbb,0xbf);	//Encode the Byte-Order Mark (BOM) so that UTF-8 File headers display properly in Microsoft Excel
+		$csv_headers .= 'Id,"Item Name","Item Location","Item Code",Language,Category,Quantity,"Stock Location"';
+		return $csv_headers;
+	}
 }

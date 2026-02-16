@@ -44,21 +44,19 @@ class Detailed_sales extends Report
                 ['cost'                 => lang('Reports.cost'), 'sorter' => 'number_sorter'],
                 ['profit'               => lang('Reports.profit'), 'sorter' => 'number_sorter'],
                 ['payment_type'         => lang('Reports.payment_type'), 'sortable' => false],
-                ['stock_location'       => lang('Reports.stock_location')],
+                ['location_name'       => lang('Reports.stock_location')],
                 ['comment'              => lang('Reports.comments')]
             ],
             'details' => [
-                lang('Reports.name'),
+				lang('Reports.item_id'),
+				lang('Reports.item_name'),
+				lang('Reports.item_location'),
+				lang('Reports.item_code'),
+				lang('Reports.cost_price'),
+				lang('Reports.unit_price'),
                 lang('Reports.category'),
-                lang('Reports.item_number'),
-                lang('Reports.description'),
                 lang('Reports.quantity'),
-                lang('Reports.subtotal'),
-                lang('Reports.tax'),
-                lang('Reports.total'),
-                lang('Reports.cost'),
-                lang('Reports.profit'),
-                lang('Reports.discount')
+                lang('Reports.stock_location'),
             ],
             'details_rewards' => [
                 lang('Reports.used'),
@@ -125,8 +123,8 @@ class Detailed_sales extends Report
             SUM(cost) AS cost,
             SUM(profit) AS profit,
             MAX(payment_type) AS payment_type,
-            MAX(item_location) AS stock_location,
-            MAX(comment) AS comment');
+            MAX(comment) AS comment,
+			item_location AS location_id');
 
         if ($inputs['location_id'] != 'all') {    // TODO: Duplicated code
             $builder->where('item_location', $inputs['location_id']);
@@ -181,10 +179,12 @@ class Detailed_sales extends Report
         foreach ($data['summary'] as $key => $value) {
             $builder = $this->db->table('sales_items_temp');
             $builder->select('
-                MAX(name) AS name,
+                MAX(sales_items_temp.item_id) AS item_id,
                 MAX(category) AS category,
                 MAX(quantity_purchased) AS quantity_purchased,
                 MAX(item_location) AS item_location,
+                MAX(item_cost_price) AS item_cost_price, 
+                MAX(item_unit_price) AS item_unit_price,
                 MAX(item_number) AS item_number,
                 MAX(description) AS description,
                 MAX(subtotal) AS subtotal,

@@ -195,8 +195,8 @@ class Item extends Model
             : 'trans_date BETWEEN ' . $this->db->escape(rawurldecode($filters['start_date'])) . ' AND ' . $this->db->escape(rawurldecode($filters['end_date']));
         $builder->where($where);
 
-        $attributes_enabled = count($filters['definition_ids']) > 0;
-
+        //$attributes_enabled = count($filters['definition_ids']) > 0;
+        $attributes_enabled = false;
         if (!empty($search)) {
             if ($attributes_enabled && $filters['search_custom']) {
                 $builder->having("attribute_values LIKE '%$search%'");

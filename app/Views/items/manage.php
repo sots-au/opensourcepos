@@ -29,11 +29,27 @@ use App\Models\Employee;
 
         // Load the preset daterange picker
         <?= view('partial/daterangepicker') ?>
-        // Set the beginning of time as starting date
-        $('#daterangepicker').data('daterangepicker').setStartDate("<?= date($config['dateformat'], mktime(0, 0, 0, 01, 01, 2010)) ?>");
-        // Update the hidden inputs with the selected dates before submitting the search data
-        var start_date = "<?= date('Y-m-d', mktime(0, 0, 0, 01, 01, 2010)) ?>";
+        
+        // Override the default dates to be 183 days ago to today
+        setTimeout(function() {
+            var picker = $('#daterangepicker').data('daterangepicker');
+            if (picker) {
+                <?php 
+                $ospos_config = config(\Config\OSPOS::class)->settings;
+                $dateformat = $ospos_config['dateformat'] ?? 'Y-m-d';
+                $start_date_str = date($dateformat, mktime(0,0,0,date("m"),date("d")-183,date("Y")));
+                $end_date_str = date($dateformat, mktime(0,0,0,date("m"),date("d"),date("Y")));
+                ?>
+                picker.setStartDate("<?php echo $start_date_str; ?>");
+                picker.setEndDate("<?php echo $end_date_str; ?>");
+                start_date = "<?php echo date('Y-m-d', mktime(0,0,0,date("m"),date("d")-183,date("Y"))); ?>";
+                end_date = "<?php echo date('Y-m-d', mktime(0,0,0,date("m"),date("d"),date("Y"))); ?>";
+            }
+        }, 100);
+        
         $("#daterangepicker").on('apply.daterangepicker', function(ev, picker) {
+            start_date = picker.startDate.format('YYYY-MM-DD');
+            end_date = picker.endDate.format('YYYY-MM-DD');
             table_support.refresh();
         });
 
@@ -72,6 +88,11 @@ use App\Models\Employee;
                 })
             }
         });
+        
+        // Refresh table after initialization to load items with proper dates
+        setTimeout(function() {
+            table_support.refresh();
+        }, 500);
     });
 </script>
 
