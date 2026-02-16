@@ -1644,19 +1644,22 @@ class Reports extends Secure_Controller
         }
 
         $summary_data = [
-            'sale_id'       => $report_data['sale_id'],
-            'sale_time'     => to_datetime(strtotime($report_data['sale_time'])),
-            'quantity'      => to_quantity_decimals($report_data['items_purchased']),
-            'employee_name' => $report_data['employee_name'],
-            'customer_name' => $report_data['customer_name'],
-            'subtotal'      => to_currency($report_data['subtotal']),
-            'tax'           => to_currency_tax($report_data['tax']),
-            'total'         => to_currency($report_data['total']),
-            'cost'          => to_currency($report_data['cost']),
-            'profit'        => to_currency($report_data['profit']),
-            'payment_type'  => $report_data['payment_type'],
-            'comment'       => $report_data['comment'],
-            'edit'          => anchor(
+            'sale_id'              => $report_data['sale_id'],
+            'sale_time'            => to_datetime(strtotime($report_data['sale_time'])),
+            'quantity'             => to_quantity_decimals($report_data['items_purchased']),
+            'employee_name'        => $report_data['employee_name'],
+            'customer_name'        => $report_data['customer_name'],
+            'subtotal'             => to_currency($report_data['subtotal']),
+            'tax'                  => to_currency_tax($report_data['tax']),
+            'total'                => to_currency($report_data['total']),
+            'cc_surcharge'         => to_currency_surcharge($report_data['cc_surcharge']),
+            'total_with_surcharge' => to_currency_surcharge($report_data['total_with_surcharge']),
+            'cost'                 => to_currency($report_data['cost']),
+            'profit'               => to_currency($report_data['profit']),
+            'payment_type'         => $report_data['payment_type'],
+            'stock_location'       => $this->stock_location->get_location_name($report_data['stock_location']),
+            'comment'              => $report_data['comment'],
+            'edit'                 => anchor(
                 'sales/edit/' . $report_data['sale_id'],
                 '<span class="glyphicon glyphicon-edit"></span>',
                 [
@@ -1814,20 +1817,23 @@ class Reports extends Secure_Controller
             }
 
             $summary_data[] = [
-                'id'            => $row['sale_id'],
-                'type_code'     => $row['type_code'],
-                'sale_time'     => to_datetime(strtotime($row['sale_time'])),
-                'quantity'      => to_quantity_decimals($row['items_purchased']),
-                'employee_name' => $row['employee_name'],
-                'customer_name' => $row['customer_name'],
-                'subtotal'      => to_currency($row['subtotal']),
-                'tax'           => to_currency_tax($row['tax']),
-                'total'         => to_currency($row['total']),
-                'cost'          => to_currency($row['cost']),
-                'profit'        => to_currency($row['profit']),
-                'payment_type'  => $row['payment_type'],
-                'comment'       => $row['comment'],
-                'edit'          => anchor(
+                'id'                   => $row['sale_id'],
+                'type_code'            => $row['type_code'],
+                'sale_time'            => to_datetime(strtotime($row['sale_time'])),
+                'quantity'             => to_quantity_decimals($row['items_purchased']),
+                'employee_name'        => $row['employee_name'],
+                'customer_name'        => $row['customer_name'],
+                'subtotal'             => to_currency($row['subtotal']),
+                'tax'                  => to_currency_tax($row['tax']),
+                'total'                => to_currency($row['total']),
+                'cc_surcharge'         => to_currency_surcharge($row['cc_surcharge']),
+                'total_with_surcharge' => to_currency_surcharge($row['total_with_surcharge']),
+                'cost'                 => to_currency($row['cost']),
+                'profit'               => to_currency($row['profit']),
+                'payment_type'         => $row['payment_type'],
+                'stock_location'       => $this->stock_location->get_location_name($row['stock_location']),
+                'comment'              => $row['comment'],
+                'edit'                 => anchor(
                     'sales/edit/' . $row['sale_id'],
                     '<span class="glyphicon glyphicon-edit"></span>',
                     [
