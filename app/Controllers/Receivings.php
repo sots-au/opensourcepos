@@ -17,6 +17,7 @@ use ReflectionException;
 
 class Receivings extends Secure_Controller
 {
+    protected $helpers = ['file', 'importfile'];
     private Receiving_lib $receiving_lib;
     private Token_lib $token_lib;
     private Barcode_lib $barcode_lib;
@@ -529,89 +530,132 @@ class Receivings extends Secure_Controller
 	{
 		$name = 'import_receiving_items.csv';
 		$data = $this->generate_import_receiving_items_csv();
-		force_download($name, $data, TRUE);
+		return $this->response->download($name, $data, false)
+			->setHeader('Content-Type', 'text/csv; charset=UTF-8');
 	}
 
-	public function csv_import()
+	public function getCsvImport()
 	{
-		$this->load->view('receivings/form_csv_import', NULL);
+		echo view('receivings/form_csv_import');
 	}
 
 
     	/**
 	 * Imports items from CSV formatted file.
 	 */
-	public function do_csv_import()
+	public function postDoCsvImport()
 	{
-		if($_FILES['file_path']['error'] != UPLOAD_ERR_OK)
-		{
-			echo json_encode(array('success' => FALSE, 'message' => $this->lang->line('items_csv_import_failed')));
-		}
-		else
-		{
-			if(file_exists($_FILES['file_path']['tmp_name']))
-			{
-				$line_array	= get_csv_file($_FILES['file_path']['tmp_name']);
-				$failCodes	= array();
-				$keys		= $line_array[0];
+		try {
+			$file = $this->request->getFile('file_path');
+			
+			if (!$file || $file->getError() != UPLOAD_ERR_OK) {
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
+				return;
+			}
 
-				$this->db->trans_begin();
-				for($i = 1; $i < count($line_array); $i++)
+			if($file->isValid())
+			{
+				$line_array	= get_csv_file($file->getTempName());
+				if(empty($line_array)) {
+					echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_nodata_wrongformat')));
+					return;
+				}
+				
+				$failCodes	= array();
+				$debug_info = array();
+
+				$db = \Config\Database::connect();
+				$db->transBegin();
+				for($i = 0; $i < count($line_array); $i++)
 				{
 					$invalidated	= FALSE;
-					$line 			= array_combine($keys,$this->xss_clean($line_array[$i]));	//Build a XSS-cleaned associative array with the row to use to assign values
+					$line 			= $this->cleanArray($line_array[$i]);	//Clean the associative array from the CSV
+
+					$debug_info[$i] = "Row " . ($i+1) . ": ";
 
 					if(!empty($line))
 					{
-						$item_number   = $line['Id'];
-						$item_quantity = $line['Quantity'];
-                        $item_location = $this->receiving_lib->get_stock_source();
-						$discount      = $this->config->item('default_receivings_discount');
-						$discount_type = $this->config->item('default_receivings_discount_type');
+						$item_number   = $line['Id'] ?? '';
+						$item_quantity = $line['Quantity'] ?? '';
+						
+						if(empty($item_number) || empty($item_quantity)) {
+							$invalidated = TRUE;
+							$debug_info[$i] .= "Empty item_number or quantity. ";
+						} else {
+							$item_location = $this->receiving_lib->get_stock_source();
+							$discount      = $this->config['default_receivings_discount'] ?? 0;
+							$discount_type = $this->config['default_receivings_discount_type'] ?? PERCENTAGE;
 
-						if($item_number != '')
-						{
-							$invalidated = $this->Item->item_number_exists($item_number);
-						}
+							if(!$this->item->item_number_exists($item_number))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Item '$item_number' does not exist. ";
+							}
 
-						//Sanity check of data
-						if(!$invalidated)
-						{
-							$invalidated = $this->data_error_check($line);
+							//Sanity check of data
+							if(!$invalidated)
+							{
+								$invalidated = $this->data_error_check($line);
+								if($invalidated) {
+									$debug_info[$i] .= "Data validation failed. ";
+								}
+							}
+
+							//Save to database
+							if(!$invalidated && !$this->receiving_lib->add_item($item_number, $item_quantity, $item_location, $discount, $discount_type))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Failed to add item to database. ";
+							}
 						}
 					}
 					else
 					{
 						$invalidated = TRUE;
+						$debug_info[$i] .= "Empty line. ";
 					}
 
-
-					//Save to database
-					if($invalidated || !$this->receiving_lib->add_item($item_number, $item_quantity, $item_location, $discount,  $discount_type))
-					{
+					if($invalidated) {
 						$failed_row = $i+1;
 						$failCodes[] = $failed_row;
-						log_message("ERROR","CSV Item import failed on line ". $failed_row .". This item was not imported.");
 					}
 				}
 
 				if(count($failCodes) > 0)
 				{
-					$message = $this->lang->line('items_csv_import_partially_failed', count($failCodes), implode(', ', $failCodes));
-					$this->db->trans_rollback();
-					echo json_encode(array('success' => FALSE, 'message' => $message));
+					$message = lang('Items.csv_import_partially_failed', [count($failCodes), implode(', ', $failCodes)]);
+					$debug_msg = " Debug: " . implode(" | ", $debug_info);
+					$db->transRollback();
+					echo json_encode(array('success' => FALSE, 'message' => $message . $debug_msg));
 				}
 				else
 				{
-					$this->db->trans_commit();
-					echo json_encode(array('success' => TRUE, 'message' => $this->lang->line('items_csv_import_success')));
+					$db->transCommit();
+					echo json_encode(array('success' => TRUE, 'message' => lang('Items.csv_import_success')));
 				}
 			}
 			else
 			{
-				echo json_encode(array('success' => FALSE, 'message' => $this->lang->line('items_csv_import_nodata_wrongformat')));
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
 			}
+		} catch(\Exception $e) {
+			echo json_encode(array('success' => FALSE, 'message' => 'CSV Import Error: ' . $e->getMessage() . ' at line ' . $e->getLine()));
 		}
+	}
+
+	/**
+	 * Sanitize array values against XSS
+	 * 
+	 * @param	array	$data
+	 * @return	array	Cleaned array
+	 */
+	private function cleanArray($data)
+	{
+		$cleaned = array();
+		foreach($data as $key => $value) {
+			$cleaned[$key] = esc($value);
+		}
+		return $cleaned;
 	}
 
 	/**

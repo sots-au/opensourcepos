@@ -1,10 +1,10 @@
 <ul id="error_message_box" class="error_message_box"></ul>
 
-<?php echo form_open_multipart('sales/do_csv_import/', array('id'=>'csv_form', 'class'=>'form-horizontal')); ?>
+<?php echo form_open_multipart('sales/doCsvImport', array('id'=>'csv_form', 'class'=>'form-horizontal')); ?>
 	<fieldset id="item_basic_info">
 		<div class="form-group form-group-sm">
 			<div class="col-xs-12">
-				<a href="<?php echo site_url('sales/csv'); ?>"><?php echo $this->lang->line('common_download_import_template'); ?></a>
+				<a href="<?php echo site_url('sales/csv'); ?>"><?php echo lang('Common.download_import_template'); ?></a>
 			</div>
 		</div>
 
@@ -12,8 +12,8 @@
 			<div class='col-xs-12'>
 				<div class="fileinput fileinput-new input-group" data-provides="fileinput">
 					<div class="form-control" data-trigger="fileinput"><i class="glyphicon glyphicon-file fileinput-exists"></i><span class="fileinput-filename"></span></div>
-					<span class="input-group-addon input-sm btn btn-default btn-file"><span class="fileinput-new"><?php echo $this->lang->line("common_import_select_file"); ?></span><span class="fileinput-exists"><?php echo $this->lang->line("common_import_change_file"); ?></span><input type="file" id="file_path" name="file_path" accept=".csv"></span>
-					<a href="#" class="input-group-addon input-sm btn btn-default fileinput-exists" data-dismiss="fileinput"><?php echo $this->lang->line("common_import_remove_file"); ?></a>
+					<span class="input-group-addon input-sm btn btn-default btn-file"><span class="fileinput-new"><?php echo lang("Common.import_select_file"); ?></span><span class="fileinput-exists"><?php echo lang("Common.import_change_file"); ?></span><input type="file" id="file_path" name="file_path" accept=".csv"></span>
+					<a href="#" class="input-group-addon input-sm btn btn-default fileinput-exists" data-dismiss="fileinput"><?php echo lang("Common.import_remove_file"); ?></a>
 				</div>
 			</div>
 		</div>
@@ -50,7 +50,7 @@ $(document).ready(function()
 
 		messages: 
 		{
-   			file_path: "<?php echo $this->lang->line('common_import_full_path'); ?>"
+   			file_path: "<?php echo lang('Common.import_full_path'); ?>"
 		}
 	}, form_support.error));
 });

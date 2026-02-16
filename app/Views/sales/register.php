@@ -124,9 +124,9 @@ if (isset($success)) {
                     <span class="ui-helper-hidden-accessible" role="status"></span>
                 </li>
 				<li class="pull-right btn-toolbar">
-					<button class='btn btn-info btn-sm pull-right modal-dlg' data-btn-submit='<?php echo $this->lang->line('common_submit') ?>' data-href='<?php echo site_url($controller_name."/csv_import"); ?>'
-            title='<?php echo $this->lang->line('sales_import_items_csv'); ?>'>
-							<span class="glyphicon glyphicon-import">&nbsp</span><?php echo $this->lang->line('common_import_csv'); ?>
+				<button class='btn btn-info btn-sm pull-right modal-dlg' data-btn-submit='<?php echo lang('Common.submit') ?>' data-href='<?php echo site_url($controller_name."/csvImport"); ?>'
+        title='<?php echo lang('Sales.sales_import_items_csv'); ?>'>
+						<span class="glyphicon glyphicon-import">&nbsp</span><?php echo lang('Common.import_csv'); ?>
 					</button>
                     <button id="new_item_button" class="btn btn-info btn-sm pull-right modal-dlg" data-btn-new="<?= lang('Common.new') ?>" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "items/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_item") ?>">
                         <span class="glyphicon glyphicon-tag">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_item") ?>
@@ -181,7 +181,17 @@ if (isset($success)) {
                             <?php } else { ?>
                                 <td><?= esc($item['item_number']) ?></td>
                                 <td style="align: center;">
-                                    <?= esc($item['name']) . ' ' . implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']]) ?>
+                                    <?php 
+                                    // Display item name with limited attributes (only first 2 attribute values)
+                                    $display_name = esc($item['name']);
+                                    $attr_values = !empty($item['attribute_values']) ? explode(', ', $item['attribute_values']) : [];
+                                    // Limit to first 2 attributes
+                                    $limited_attrs = array_slice($attr_values, 0, 2);
+                                    if (!empty($limited_attrs)) {
+                                        $display_name .= ' ' . implode(', ', $limited_attrs);
+                                    }
+                                    echo $display_name;
+                                    ?>
                                     <br>
                                     <?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']';
                                     endif; ?>
@@ -355,22 +365,23 @@ if (isset($success)) {
                 )
                 ?>
             <?php } else { ?>
-                <div class="form-group" id="select_customer">
-                    <label id="customer_label" for="customer" class="control-label" style="margin-bottom: 1em; margin-top: -1em;">
+                <div class="form-group form-group-sm" id="select_customer" style="margin-bottom: 0;">
+                    <label id="customer_label" for="customer" class="control-label">
                         <?= lang(ucfirst($controller_name) . '.select_customer') . esc(" $customer_required") ?>
                     </label>
                     <?= form_input(['name' => 'customer', 'id' => 'customer', 'class' => 'form-control input-sm', 'value' => lang(ucfirst($controller_name) . '.start_typing_customer_name')]) ?>
-
-                    <button class="btn btn-info btn-sm modal-dlg" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "customers/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_customer") ?>">
-                        <span class="glyphicon glyphicon-user">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_customer") ?>
-                    </button>
-                    <button class="btn btn-default btn-sm modal-dlg" id="show_keyboard_help" data-href="<?= esc("$controller_name/salesKeyboardHelp") ?>" title="<?= lang(ucfirst($controller_name) . '.key_title') ?>">
-                        <span class="glyphicon glyphicon-share-alt">&nbsp;</span><?= lang(ucfirst($controller_name) . '.key_help') ?>
-                    </button>
+                    <div style="margin-top: 0.5em;">
+                        <button class="btn btn-info btn-sm modal-dlg" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "customers/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_customer") ?>">
+                            <span class="glyphicon glyphicon-user">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_customer") ?>
+                        </button>
+                        <button class="btn btn-default btn-sm modal-dlg" id="show_keyboard_help" data-href="<?= esc("$controller_name/salesKeyboardHelp") ?>" title="<?= lang(ucfirst($controller_name) . '.key_title') ?>">
+                            <span class="glyphicon glyphicon-share-alt">&nbsp;</span><?= lang(ucfirst($controller_name) . '.key_help') ?>
+                        </button>
+                    </div>
                 </div>
             <?php } ?>
         <?= form_close() ?>
-
+    <div class="panel-body">
         <table class="sales_table_100" id="sale_totals">
             <tr>
                 <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.quantity_of_items', [$item_count]) ?></th>

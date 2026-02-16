@@ -92,9 +92,9 @@ if (isset($success)) {
             </li>
 
 			<li class="pull-right btn-toolbar">
-					<button class='btn btn-info btn-sm pull-right modal-dlg' data-btn-submit='<?php echo $this->lang->line('common_submit') ?>' data-href='<?php echo site_url($controller_name."/csv_import"); ?>'
-            title='<?php echo $this->lang->line('receivings_import_items_csv'); ?>'>
-							<span class="glyphicon glyphicon-import">&nbsp</span><?php echo $this->lang->line('common_import_csv'); ?>
+					<button class='btn btn-info btn-sm pull-right modal-dlg' data-btn-submit='<?php echo lang('Common.submit') ?>' data-href='<?php echo site_url($controller_name."/csvImport"); ?>'
+            title='<?php echo lang('Receivings.receivings_import_items_csv'); ?>'>
+							<span class="glyphicon glyphicon-import">&nbsp</span><?php echo lang('Common.import_csv'); ?>
 					</button>
                 <button id="new_item_button" class="btn btn-info btn-sm pull-right modal-dlg" data-btn-submit="<?= lang('Common.submit') ?>" data-btn-new="<?= lang('Common.new') ?>" data-href="<?= "items/view" ?>" title="<?= lang('Sales.new_item') ?>">
                     <span class="glyphicon glyphicon-tag">&nbsp;</span><?= lang('Sales.new_item') ?>
@@ -140,7 +140,18 @@ if (isset($success)) {
                         <td><?= anchor("$controller_name/deleteItem/$line", '<span class="glyphicon glyphicon-trash"></span>') ?></td>
                         <td><?= esc($item['item_number']) ?></td>
                         <td style="text-align: center;">
-                            <?= esc($item['name'] . ' ' . implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']])) ?><br>
+                            <?php 
+                            // Display item name with limited attributes (only first 2 attribute values)
+                            $display_name = esc($item['name']);
+                            $attr_values = !empty($item['attribute_values']) ? explode(', ', $item['attribute_values']) : [];
+                            // Limit to first 2 attributes
+                            $limited_attrs = array_slice($attr_values, 0, 2);
+                            if (!empty($limited_attrs)) {
+                                $display_name .= ' ' . implode(', ', $limited_attrs);
+                            }
+                            echo $display_name;
+                            ?>
+                            <br>
                             <?= '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']' ?>
                             <?= form_hidden('location', (string)$item['item_location']) ?>
                         </td>

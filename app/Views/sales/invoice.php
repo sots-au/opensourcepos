@@ -130,18 +130,17 @@ if (isset($error_message)) {
         ?>
                 <tr class="item-row">
                     <td><?php echo $item['item_id']; ?></td>
-					<td><?php echo $item['item_name']; ?></td>
-					<td><?php echo $item['item_location']; ?></td>
-					<td><?php echo $item['item_code']; ?></td>
-					<td><?php echo $item['item_language']; ?></td>
-					<td><?php echo $item['category']; ?></td>
-					<td><?php echo $item['quantity']; ?></td>
-					<td><?php echo $item['location_name']; ?></td>
+                    <td><?php echo esc($item['name']); ?></td>
+                    <td><?php echo isset($item['item_location']) ? esc($item['item_location']) : ''; ?></td>
+                    <td><?php echo isset($item['item_code']) ? esc($item['item_code']) : ''; ?></td>
+                    <td><?php echo isset($item['item_language']) ? esc($item['item_language']) : ''; ?></td>
+                    <td><?php echo isset($item['category']) ? esc($item['category']) : ''; ?></td>
+                    <td><?php echo to_quantity_decimals($item['quantity']); ?></td>
+                    <td><?php echo isset($item['location_name']) ? esc($item['location_name']) : ''; ?></td>
                 </tr>
         <?php
                 }
             }
-        }
         ?>
 
         <tr>
