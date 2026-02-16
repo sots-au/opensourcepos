@@ -57,6 +57,8 @@ if (!empty($warning)) {
 if (isset($success)) {
     echo '<div class="alert alert-dismissible alert-success">' . esc($success) . '</div>';
 }
+
+helper('url');
 ?>
 
 <div id="register_wrapper">
@@ -397,6 +399,10 @@ if (isset($success)) {
                     <th style="width: 45%; text-align: right;"><?= to_currency_tax($tax['sale_tax_amount']) ?></th>
                 </tr>
             <?php } ?>
+            <tr id="cc_surcharge_row" style="display: none;">
+                <th style="width: 55%;"><?= lang('Config.cc_surcharge') ?></th>
+                <th style="width: 45%; text-align: right;"><span id="cc_surcharge_display"><?= to_currency($cc_surcharge) ?></span></th>
+            </tr>
             <tr>
                 <th style="width: 55%; font-size: 150%"><?= lang(ucfirst($controller_name) . '.total') ?></th>
                 <th style="width: 45%; font-size: 150%; text-align: right;"><span id="sale_total"><?= to_currency($total) ?></span></th>
@@ -493,7 +499,7 @@ if (isset($success)) {
                         <tbody id="payment_contents">
                             <?php foreach ($payments as $payment_id => $payment) { ?>
                                 <tr>
-                                    <td><?= anchor("$controller_name/deletePayment/". base64_encode($payment_id), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
+                                    <td><?= anchor("$controller_name/deletePayment/". base64url_encode($payment_id), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
                                     <td><?= $payment['payment_type'] ?></td>
                                     <td style="text-align: right;"><?= to_currency($payment['payment_amount']) ?></td>
                                 </tr>
@@ -825,8 +831,17 @@ if (isset($success)) {
 
     function check_payment_type() {
         var cash_mode = <?= json_encode($cash_mode) ?>;
+        var payment_type = $("#payment_types").val();
+        var cc_surcharge = <?= json_encode($cc_surcharge) ?>;
+        
+        // Show/hide CC surcharge row based on payment type
+        if (payment_type && payment_type.indexOf("<?= lang(ucfirst($controller_name) . '.credit') ?>") !== -1) {
+            $("#cc_surcharge_row").show();
+        } else {
+            $("#cc_surcharge_row").hide();
+        }
 
-        if ($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
+        if (payment_type == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
             $("#sale_total").html("<?= to_currency($total) ?>");
             $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
             $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.giftcard_number') ?>");
@@ -834,7 +849,7 @@ if (isset($success)) {
             $(".giftcard-input").attr('disabled', false);
             $(".non-giftcard-input").attr('disabled', true);
             $(".giftcard-input:enabled").val('').focus();
-        } else if (($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
+        } else if ((payment_type == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
             $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
             $("#sale_amount_due").html("<?= to_currency($cash_amount_due) ?>");
             $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");

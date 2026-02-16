@@ -513,7 +513,8 @@ class Sale extends Model
         int $sale_type,
         ?array $payments,
         ?int $dinner_table_id,
-        ?array &$sales_taxes
+        ?array &$sales_taxes,
+        string $cc_surcharge = '0.0000'
     ): int {    // TODO: this method returns the sale_id but the override is expecting it to return a bool. The signature needs to be reworked.  Generally when there are more than 3 maybe 4 parameters, there's a good chance that an object needs to be passed rather than so many params.
         $config = config(OSPOS::class)->settings;
         $attribute = model(Attribute::class);
@@ -542,7 +543,8 @@ class Sale extends Model
             'quote_number'      => $quote_number,
             'work_order_number' => $work_order_number,
             'dinner_table_id'   => $dinner_table_id,
-            'sale_type'         => $sale_type
+            'sale_type'         => $sale_type,
+            'cc_surcharge'      => $cc_surcharge
         ];
 
         // Run these queries as a transaction, we want to make sure we do all or nothing
@@ -907,13 +909,8 @@ class Sale extends Model
     {
         $payments = get_payment_options();
 
-        if ($giftcard) {
-            $payments[lang('Sales.giftcard')] = lang('Sales.giftcard');
-        }
+        // Removed giftcard and rewards options to limit to Cash and Credit Card only
 
-        if ($reward_points) {
-            $payments[lang('Sales.rewards')] = lang('Sales.rewards');
-        }
         $sale_lib = new Sale_lib();
         if ($sale_lib->get_mode() == 'sale_work_order') {
             $payments[lang('Sales.cash_deposit')] = lang('Sales.cash_deposit');
@@ -1125,6 +1122,7 @@ class Sale extends Model
                     MAX(sales_items.description) AS description,
                     MAX(payments.payment_type) AS payment_type,
                     MAX(payments.sale_payment_amount) AS sale_payment_amount,
+                    MAX(sales.cc_surcharge) AS cc_surcharge,
                     ' . "
                     $sale_subtotal AS subtotal,
                     $tax AS tax,
