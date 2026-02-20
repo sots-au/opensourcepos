@@ -1717,7 +1717,7 @@ class Sales extends Secure_Controller
     	/*
 	 Items import from csv spreadsheet
 	 */
-	public function csv()
+	public function getCsv()
 	{
 		$name = 'import_sales_items.csv';
 		$data = $this->generate_import_sales_items_csv();

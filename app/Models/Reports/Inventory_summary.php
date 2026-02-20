@@ -39,25 +39,22 @@ class Inventory_summary extends Report
     {
         $item = model(Item::class);
 
-        $builder = $this->db->table('items AS items');
-
-
-        $this->db->from('item_inventory_summary');
-    
+        // Use the view directly with proper query builder
+        $builder = $this->db->table('ospos_item_inventory_summary');
 
         // Should be corresponding to the values Inventory_summary::getItemCountDropdownArray() returns
         if ($inputs['item_count'] == 'zero_and_less') {
-            $builder->where('item_quantities.quantity <=', 0);
+            $builder->where('quantity <=', 0);
         } elseif ($inputs['item_count'] == 'more_than_zero') {
-            $builder->where('item_quantities.quantity >', 0);
+            $builder->where('quantity >', 0);
         }
 
         if (!empty($inputs['location_id']) && $inputs['location_id'] !== 'all') {
-			$this->db->where('location_id', $inputs['location_id']);
-		}
+            $builder->where('location_id', $inputs['location_id']);
+        }
 
-        $this->db->order_by('name', 'ASC');
-		$this->db->order_by('qty_per_pack', 'ASC');
+        $builder->orderBy('name', 'ASC');
+        $builder->orderBy('qty_per_pack', 'ASC');
 
         return $builder->get()->getResultArray();
     }

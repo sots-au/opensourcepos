@@ -61,7 +61,7 @@ class Reports extends Secure_Controller
         $method_name = $request->getUri()->getSegment(2);
         $exploder = explode('_', $method_name);
 
-        $this->attribute = config(Attribute::class);
+        $this->attribute = model(Attribute::class);
         $this->config = config(OSPOS::class)->settings;
         $this->customer = model(Customer::class);
         $this->stock_location = model(Stock_location::class);
@@ -154,7 +154,7 @@ class Reports extends Secure_Controller
                 'total'     => to_currency($row['total']),
                 'cost'      => to_currency($row['cost']),
                 'profit'    => to_currency($row['profit']),
-				'location_name' => $this->Stock_location->get_location_name($row['location_id'])
+				'location_name' => $this->stock_location->get_location_name($row['location_id'])
             ];
         }
 
@@ -374,9 +374,9 @@ class Reports extends Secure_Controller
             $tabular_data[] = [
                 'item_id' => $row['item_id'],
                 'item_name'  => $row['name'],
-                'item_location' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
-				'item_code' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
-                'item_language' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
+                'item_location' => $this->attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+				'item_code' => $this->attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+                'item_language' => $this->attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
                 'category'   => $row['category'],
                 'cost_price' => $row['cost_price'],
                 'unit_price' => $row['unit_price'],
@@ -1308,7 +1308,7 @@ class Reports extends Secure_Controller
                 'profit'        => to_currency($row['profit']),
                 'payment_type'  => $row['payment_type'],
                 'comment'       => $row['comment'],
-                'location_name' => $this->Stock_location->get_location_name($row['location_id']),
+                'location_name' => $this->stock_location->get_location_name($row['location_id']),
                 'edit'          => anchor(
                     'sales/edit/' . $row['sale_id'],
                     '<span class="glyphicon glyphicon-edit"></span>',
@@ -1852,13 +1852,13 @@ class Reports extends Secure_Controller
                 $details_data[$row['sale_id']][] = array_merge([
                     $drow['item_id'],
                     $drow['name'],
-					$this->Attribute->get_attribute_value($drow['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
-					$this->Attribute->get_attribute_value($drow['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+					$this->attribute->get_attribute_value($drow['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+					$this->attribute->get_attribute_value($drow['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
 					$drow['item_cost_price'],
 					$drow['item_unit_price'],
                     $drow['category'],
 					to_quantity_decimals($drow['quantity_purchased']),
-					$this->Stock_location->get_location_name($drow['item_location'])
+					$this->stock_location->get_location_name($drow['item_location'])
                 ], $attribute_values);
             }
 
@@ -2024,9 +2024,9 @@ class Reports extends Secure_Controller
             $tabular_data[] = [
                 'item_id' => $row['item_id'],
                 'item_name'     => $row['name'],
-				'item_location' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
-				'item_code' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
-                'item_language' => $this->Attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
+				'item_location' => $this->attribute->get_attribute_value($row['item_id'], ITEM_LOCATION_DEFINITION_ID)->attribute_value,
+				'item_code' => $this->attribute->get_attribute_value($row['item_id'], ITEM_CODE_DEFINTION_ID)->attribute_value,
+                'item_language' => $this->attribute->get_attribute_value($row['item_id'], ITEM_LANGUAGE_DEFINTION_ID)->attribute_value,
                 'category' => $row['category'],
                 'quantity'      => to_quantity_decimals($row['quantity']),
                 'location_name' => $row['location_name']
