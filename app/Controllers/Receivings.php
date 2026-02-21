@@ -670,13 +670,12 @@ class Receivings extends Secure_Controller
 		//Check for empty required fields
 		$check_for_empty = array(
             $line['Id'],
-			$line['Quantity'],
-			$line['Stock Location']
+			$line['Quantity']
 		);
 
 		if(in_array('',$check_for_empty,true))
 		{
-			log_message("ERROR","Empty required value");
+			log_message('error', 'Empty required value');
 			return TRUE;	//Return fail on empty required fields
 		}
 
@@ -691,7 +690,7 @@ class Receivings extends Secure_Controller
 		{
 			if(!is_numeric($value) && $value != '')
 			{
-				log_message("ERROR","non-numeric: '$value' when numeric is required");
+				log_message('error', "non-numeric: '$value' when numeric is required");
 				return TRUE;
 			}
 		}

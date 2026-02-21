@@ -72,9 +72,9 @@ class Item extends Model
         }
 
         $builder = $this->db->table('items');
-        $builder->where('item_number', $item_number);
-        $builder->where('deleted !=', 1);
-        $builder->where('item_id !=', intval($item_id));
+        $builder->where('item_id', $item_number);
+        //$builder->where('deleted !=', 1);
+        //$builder->where('item_id !=', intval($item_id));
 
         // Check if $item_id is a number and not a string starting with 0
         // because cases like 00012345 will be seen as a number where it is a barcode

@@ -124,7 +124,7 @@ class Detailed_sales extends Report
             SUM(profit) AS profit,
             MAX(payment_type) AS payment_type,
             MAX(comment) AS comment,
-			item_location AS location_id');
+			MAX(item_location) AS stock_location');
 
         if ($inputs['location_id'] != 'all') {    // TODO: Duplicated code
             $builder->where('item_location', $inputs['location_id']);
@@ -177,9 +177,11 @@ class Detailed_sales extends Report
         $data['rewards'] = [];
 
         foreach ($data['summary'] as $key => $value) {
+            $temp_table = $this->db->prefixTable('sales_items_temp');
             $builder = $this->db->table('sales_items_temp');
-            $builder->select('
-                MAX(sales_items_temp.item_id) AS item_id,
+            $builder->select("
+                MAX($temp_table.item_id) AS item_id,
+                MAX(name) AS name,
                 MAX(category) AS category,
                 MAX(quantity_purchased) AS quantity_purchased,
                 MAX(item_location) AS item_location,
@@ -194,19 +196,19 @@ class Detailed_sales extends Report
                 MAX(profit) AS profit,
                 MAX(discount) AS discount,
                 MAX(discount_type) AS discount_type,
-                MAX(sale_status) AS sale_status');
+                MAX(sale_status) AS sale_status");
 
             if (count($inputs['definition_ids']) > 0) {
                 $format = $this->db->escape(dateformat_mysql());
                 $builder->select('GROUP_CONCAT(DISTINCT CONCAT_WS(\'_\', definition_id, attribute_value) ORDER BY definition_id SEPARATOR \'|\') AS attribute_values');
                 $builder->select("GROUP_CONCAT(DISTINCT CONCAT_WS('_', definition_id, DATE_FORMAT(attribute_date, $format)) SEPARATOR '|') AS attribute_dtvalues");
                 $builder->select('GROUP_CONCAT(DISTINCT CONCAT_WS(\'_\', definition_id, attribute_decimal) SEPARATOR \'|\') AS attribute_dvalues');
-                $builder->join('attribute_links', 'attribute_links.item_id = sales_items_temp.item_id AND attribute_links.sale_id = sales_items_temp.sale_id AND definition_id IN (' . implode(',', $inputs['definition_ids']) . ')', 'left');
+                $builder->join('attribute_links', "attribute_links.item_id = $temp_table.item_id AND attribute_links.sale_id = $temp_table.sale_id AND definition_id IN (" . implode(',', $inputs['definition_ids']) . ')', 'left');
                 $builder->join('attribute_values', 'attribute_values.attribute_id = attribute_links.attribute_id', 'left');
             }
 
-            $builder->groupBy('sales_items_temp.sale_id, sales_items_temp.item_id, sales_items_temp.sale_id');
-            $builder->where('sales_items_temp.sale_id', $value['sale_id']);
+            $builder->groupBy("$temp_table.sale_id, $temp_table.item_id, $temp_table.sale_id");
+            $builder->where("$temp_table.sale_id", $value['sale_id']);
             $data['details'][$key] = $builder->get()->getResultArray();
 
             $builder->select('used, earned');
