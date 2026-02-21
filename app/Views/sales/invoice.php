@@ -23,6 +23,11 @@
 <?= view('partial/header') ?>
 
 <?php
+// Set default invoice columns if not provided by controller
+if (!isset($invoice_columns)) {
+    $invoice_columns = 8;
+}
+
 if (isset($error_message)) {
     echo '<div class="alert alert-dismissible alert-danger">' . $error_message . '</div>';
     exit;
