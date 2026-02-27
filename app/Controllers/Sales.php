@@ -461,6 +461,8 @@ class Sales extends Secure_Controller
             }
         }
 
+        // Need to set payment type here as it was coming blank in get_totals
+        $this->sale_lib->set_payment_type($payment_type);
         $this->_reload($data);
     }
 
@@ -583,9 +585,10 @@ class Sales extends Secure_Controller
             $price = parse_decimals($this->request->getPost('price'));
             $quantity = parse_decimals($this->request->getPost('quantity'));
             $discount_type = $this->request->getPost('discount_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $raw_discount = $this->request->getPost('discount') ?? '0';
             $discount = $discount_type
-                ? parse_quantity($this->request->getPost('discount'))
-                : parse_decimals($this->request->getPost('discount'));
+                ? parse_quantity($raw_discount)
+                : parse_decimals($raw_discount);
 
             $item_location = $this->request->getPost('location', FILTER_SANITIZE_NUMBER_INT);
             $discounted_total = $this->request->getPost('discounted_total') != ''
@@ -699,11 +702,6 @@ class Sales extends Secure_Controller
         $data['discount'] = $this->sale_lib->get_discount();
         $data['payments'] = $this->sale_lib->get_payments();
 
-        if (empty($data['payments'])) {
-            $data['error'] = lang('Sales.payment_type_required');
-            $this->_reload($data);
-            return;
-        }
 
         // Returns 'subtotal', 'total', 'cash_total', 'payment_total', 'amount_due', 'cash_amount_due', 'payments_cover_total'
         $totals = $this->sale_lib->get_totals($tax_details[0]);
@@ -718,10 +716,14 @@ class Sales extends Secure_Controller
         $data['non_cash_total'] = $totals['total'];
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
-        if ($data['cash_mode']) {    // TODO: Convert this to ternary notation
+        if ($data['cash_rounding']) {
+            $data['total'] = $totals['cash_total'];
             $data['amount_due'] = $totals['cash_amount_due'];
         } else {
+            $data['total'] = $totals['total'];
             $data['amount_due'] = $totals['amount_due'];
         }
 
@@ -1065,6 +1067,8 @@ class Sales extends Secure_Controller
         $data['non_cash_total'] = $totals['total'];
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
         if ($data['cash_mode'] && ($data['selected_payment_type'] === lang('Sales.cash') || $data['payments_total'] > 0)) {
             $data['total'] = $totals['cash_total'];
@@ -1165,6 +1169,7 @@ class Sales extends Secure_Controller
         $data['payments_total'] = $totals['payment_total'];
         $data['payments_cover_total'] = $totals['payments_cover_total'];
         $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
         // cash_mode indicates whether this sale is going to be processed using cash_rounding
         $cash_mode = $this->session->get('cash_mode');
@@ -1792,7 +1797,7 @@ class Sales extends Secure_Controller
 							}
 
 							//Save to database
-							if(!$invalidated && !$this->sale_lib->add_item($item_number, $item_quantity, $item_location, $discount, $discount_type))
+							if(!$invalidated && !$this->sale_lib->add_item($item_number, $item_location, $item_quantity, $discount, $discount_type))
 							{
 								$invalidated = TRUE;
 								$debug_info[$i] .= "Failed to add item to database. ";

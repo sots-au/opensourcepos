@@ -70,9 +70,16 @@ echo view('partial/print_receipt', ['print_after_sale', $print_after_sale, 'sele
             <th style="width: 15%; text-align: right;"><?= lang('Sales.total') ?></th>
         </tr>
 
-        <?php foreach (array_reverse($cart, true) as $line => $item) { ?>
+        <?php foreach (array_reverse($cart, true) as $line => $item) {
+            $display_name = $item['name'];
+            $attr_values = !empty($item['attribute_values']) ? explode(', ', $item['attribute_values']) : [];
+            $attr_values = array_filter(array_slice($attr_values, 0, 2), fn($v) => trim($v) !== '');
+            if (!empty($attr_values)) {
+                $display_name .= ' ' . implode(', ', $attr_values);
+            }
+        ?>
             <tr>
-                <td><?= esc($item['name'] . ' ' . $item['attribute_values']) ?></td>
+                <td><?= esc($display_name) ?></td>
                 <td><?= to_currency($item['price']) ?></td>
                 <td><?= to_quantity_decimals($item['quantity']) . ' ' . ($show_stock_locations ? ' [' . esc($item['stock_name']) . ']' : '') ?>&nbsp;&nbsp;&nbsp;x <?= $item['receiving_quantity'] != 0 ? to_quantity_decimals($item['receiving_quantity']) : 1 ?></td>
                 <td><div class="total-value"><?= to_currency($item['total']) ?></div></td>
@@ -85,7 +92,7 @@ echo view('partial/print_receipt', ['print_after_sale', $print_after_sale, 'sele
                     <?php if ($item['discount_type'] == FIXED) { ?>
                         <td colspan="3" class="discount"><?= to_currency($item['discount']) . ' ' . lang('Sales.discount') ?></td>
                     <?php } elseif ($item['discount_type'] == PERCENT) { ?>
-                        <td colspan="3" class="discount"><?= to_decimals($item['discount']) . ' ' . lang('Sales.discount_included') ?></td>
+                        <td colspan="3" class="discount"><?= number_format($item['discount'], 0) . ' ' . lang('Sales.discount_included') ?></td>
                     <?php } ?>
                 </tr>
             <?php } ?>

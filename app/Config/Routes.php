@@ -69,7 +69,9 @@ $routes->get('items/suggest_location', 'Items::getSuggestLocation');
 $routes->get('items/row/(:any)', 'Items::getRow/$1');
 $routes->get('items/view/(:num)', 'Items::getView/$1');
 $routes->get('items/inventory/(:num)', 'Items::getInventory/$1');
+$routes->post('items/saveInventory/(:num)', 'Items::postSaveInventory/$1');
 $routes->get('items/count_details/(:num)', 'Items::getCountDetails/$1');
+$routes->get('items/countDetails/(:num)', 'Items::getCountDetails/$1');
 $routes->get('items/generate_barcodes/(:any)', 'Items::getGenerateBarcodes/$1');
 $routes->get('items/attributes/(:num)', 'Items::getAttributes/$1');
 $routes->post('items/attributes/(:num)', 'Items::postAttributes/$1');
@@ -159,12 +161,20 @@ $routes->post('receivings/setPrintAfterSale', 'Receivings::postSetPrintAfterSale
 $routes->post('receivings/setReference', 'Receivings::postSetReference');
 $routes->post('receivings/editItem/(:any)', 'Receivings::postEditItem/$1');
 $routes->get('receivings/deleteItem/(:any)', 'Receivings::getDeleteItem/$1');
+$routes->get('receivings/stockItemSearch', 'Receivings::getStockItemSearch');
+$routes->get('receivings/itemSearch', 'Receivings::getItemSearch');
+$routes->get('receivings/removeSupplier', 'Receivings::getRemoveSupplier');
 $routes->post('receivings/csvImport', 'Receivings::postDoCsvImport');
 
 // camelCase route variants for Items
 $routes->get('items/itemSearch', 'Items::getItemSearch');
 $routes->post('items/saveItem', 'Items::postSave');
 $routes->post('items/checkItemNumber', 'Items::postCheckItemNumber');
+$routes->get('items/checkNumeric', 'Items::getCheckNumeric');
+
+// checkNumeric route for other controllers (inherited from Secure_Controller)
+$routes->get('config/checkNumeric', 'Config::getCheckNumeric');
+$routes->get('expenses/checkNumeric', 'Expenses::getCheckNumeric');
 
 // CSV template download routes (methods don't follow get/post naming convention)
 $routes->get('sales/csv', 'Sales::csv');
