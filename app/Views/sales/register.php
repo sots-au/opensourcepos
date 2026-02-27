@@ -224,9 +224,9 @@ helper('url');
 
                             <td>
                                 <div class="input-group">
-                                    <?= form_input(['name' => 'discount', 'class' => 'form-control input-sm', 'value' => $item['discount_type'] ? to_currency_no_money($item['discount']) : to_decimals($item['discount']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
+                                    <?= form_input(['name' => 'discount', 'class' => 'form-control input-sm', 'value' => $item['discount_type'] ? to_currency_no_money($item['discount']) : to_decimals($item['discount']), 'tabindex' => ++$tabindex, 'readonly' => 'readonly', 'disabled' => 'disabled']) ?>
                                     <span class="input-group-btn">
-                                        <?= form_checkbox(['id' => 'discount_toggle', 'name' => 'discount_toggle', 'value' => 1, 'data-toggle' => "toggle", 'data-size' => 'small', 'data-onstyle' => 'success', 'data-on' => '<b>' . $config['currency_symbol'] . '</b>', 'data-off' => '<b>%</b>', 'data-line' => $line, 'checked' => $item['discount_type'] == 1]) ?>
+                                        <?= form_checkbox(['id' => 'discount_toggle', 'name' => 'discount_toggle', 'value' => 1, 'data-toggle' => "toggle", 'data-size' => 'small', 'data-onstyle' => 'success', 'data-on' => '<b>' . $config['currency_symbol'] . '</b>', 'data-off' => '<b>%</b>', 'data-line' => $line, 'checked' => $item['discount_type'] == 1, 'disabled' => 'disabled']) ?>
                                     </span>
                                 </div>
                             </td>
@@ -478,6 +478,16 @@ helper('url');
                                     <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm giftcard-input', 'disabled' => true, 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex]) ?>
                                 </td>
                             </tr>
+                            <tr id="payment-validation-error">
+                                <td></td>
+                                <td style="padding-top: 2px; padding-bottom: 4px; color: red;">
+                                    <?= lang(ucfirst($controller_name) . '.payment_type_required') ?? 'Please select a payment type' ?>
+                                </td>
+                            </tr>
+                            <tr id="payment-validation-no-error">
+                                <td>&nbsp;</td>
+                                <td style="padding-top: 2px; padding-bottom: 4px;">&nbsp;</td>
+                            </tr>
                         </table>
                     <?= form_close() ?>
 
@@ -585,6 +595,9 @@ helper('url');
 
 <script type="text/javascript">
     $(document).ready(function() {
+        // hide the validation error on page load
+        $('#payment-validation-error').hide();
+
         const redirect = function() {
             window.location.href = "<?= site_url('sales'); ?>";
         };
@@ -768,8 +781,16 @@ helper('url');
             }
         });
 
-        $('#add_payment_button').click(function() {
-            $('#add_payment_form').submit();
+        $('#add_payment_button').click(function(event) {
+            if ($('#payment_types').val() == '') {
+                $('#payment-validation-error').show();
+                $('#payment-validation-no-error').hide();
+                event.preventDefault();
+            } else {
+                $('#payment-validation-error').hide();
+                $('#payment-validation-no-error').show();
+                $('#add_payment_form').submit();
+            }
         });
 
         $('#payment_types').change(check_payment_type).ready(check_payment_type);
@@ -833,7 +854,16 @@ helper('url');
         var cash_mode = <?= json_encode($cash_mode) ?>;
         var payment_type = $("#payment_types").val();
         var cc_surcharge = <?= json_encode($cc_surcharge) ?>;
-        
+
+        // Validate payment type selection
+        if (payment_type == '') {
+            $('#payment-validation-error').show();
+            $('#payment-validation-no-error').hide();
+        } else {
+            $('#payment-validation-error').hide();
+            $('#payment-validation-no-error').show();
+        }
+
         // Show/hide CC surcharge row based on payment type
         if (payment_type && payment_type.indexOf("<?= lang(ucfirst($controller_name) . '.credit') ?>") !== -1) {
             $("#cc_surcharge_row").show();
