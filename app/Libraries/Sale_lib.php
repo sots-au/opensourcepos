@@ -603,7 +603,7 @@ class Sale_lib
 
         foreach ($this->get_payments() as $payments) {
             if (!$payments['cash_adjustment']) {
-                $subtotal = bcadd($payments['payment_amount'], $subtotal);
+                $subtotal = bcadd($payments['payment_amount'], $subtotal, cc_surcharge_decimals());
             }
             if (lang('Sales.cash') != $payments['payment_type'] && lang('Sales.cash_adjustment') != $payments['payment_type']) {
                 $cash_mode_eligible = CASH_MODE_FALSE;
@@ -679,6 +679,21 @@ class Sale_lib
             }
         }
 
+        // Calculate credit card surcharge (Option A: prorate to card payment portion)
+        $cc_payment_total = '0';
+        foreach ($this->get_payments() as $payment) {
+            // Check if this payment is a credit card payment
+            if (isset($payment['payment_type']) && strpos($payment['payment_type'], lang('Sales.credit')) !== false) {
+                $cc_payment_total = bcadd($cc_payment_total, $payment['payment_amount']);
+            }
+        }
+        
+        // Calculate surcharge on credit card payments only
+        $cc_surcharge = $this->calculate_cc_surcharge($cc_payment_total);
+        $totals['cc_surcharge'] = $cc_surcharge;
+
+        $total = bcadd($total, $cc_surcharge);
+
         $totals['subtotal'] = $subtotal;
         $totals['total'] = $total;
         $totals['tax_total'] = $sales_tax;
@@ -725,21 +740,6 @@ class Sale_lib
             $totals['cash_adjustment_amount'] = round($cash_total - $totals['total'], totals_decimals(), PHP_ROUND_HALF_UP);
         }
 
-        // Calculate credit card surcharge (Option A: prorate to card payment portion)
-        $cc_payment_total = '0';
-        foreach ($this->get_payments() as $payment) {
-            // Check if this payment is a credit card payment
-            if (isset($payment['payment_type']) && strpos($payment['payment_type'], lang('Sales.credit')) !== false) {
-                $cc_payment_total = bcadd($cc_payment_total, $payment['payment_amount']);
-            }
-        }
-        
-        // Calculate surcharge on credit card payments only
-        $cc_surcharge = $this->calculate_cc_surcharge($cc_payment_total);
-        $totals['cc_surcharge'] = $cc_surcharge;
-
-        $cash_mode = $this->session->get('cash_mode');    // TODO: This variable is never used.
-
         return $totals;
     }
 
@@ -751,7 +751,7 @@ class Sale_lib
         // Payment totals need to be identified first so that we know whether or not there is a non-cash payment involved
         $payment_total = $this->get_payments_total();
         $sales_total = $this->get_total();
-        $amount_due = bcsub($sales_total, $payment_total);
+        $amount_due = bcsub($sales_total, $payment_total, cc_surcharge_decimals());
         $precision = totals_decimals();
         $rounded_due = bccomp((string)round((float)$amount_due, $precision, PHP_ROUND_HALF_UP), '0', $precision);    // TODO: Is round() currency safe?
 

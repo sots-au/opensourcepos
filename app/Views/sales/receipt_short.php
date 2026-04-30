@@ -107,13 +107,20 @@
         }
         ?>
 
+        <?php if (isset($cc_surcharge) && $cc_surcharge != '0.0000' && $cc_surcharge != '0') { ?>
+            <tr>
+                <td colspan="2" class="total-value"><?= lang('Config.cc_surcharge') ?>:</td>
+                <td class="total-value"><?= to_currency_surcharge($cc_surcharge) ?></td>
+            </tr>
+        <?php } ?>
+
         <tr>
         </tr>
 
-        <?php $border = (!$config['receipt_show_taxes'] && !($config['receipt_show_total_discount'] && $discount > 0)); ?>
+        <?php $show_surcharge_precision = isset($cc_surcharge) && bccomp((string)$cc_surcharge, '0.0000', cc_surcharge_decimals()) !== 0; ?>
         <tr>
             <td colspan="2" style="text-align: right;<?= $border ? ' border-top: 2px solid black;' : '' ?>"><?= lang('Sales.total') ?></td>
-            <td style="text-align: right;<?= $border ? ' border-top: 2px solid black;' : '' ?>"><?= to_currency($total) ?></td>
+            <td style="text-align: right;<?= $border ? ' border-top: 2px solid black;' : '' ?>"><?php if ($show_surcharge_precision) { echo to_currency_surcharge(bcadd($subtotal, $cc_surcharge, cc_surcharge_decimals())); } else { echo to_currency($total); } ?></td>
         </tr>
 
 
@@ -124,10 +131,19 @@
             $only_sale_check |= $payment['payment_type'] == lang('Sales.check');
             $splitpayment = explode(':', $payment['payment_type']);
             $show_giftcard_remainder |= $splitpayment[0] == lang('Sales.giftcard');
+            $use_total_as_payment = count($payments) === 1 && strpos($payment['payment_type'], lang('Sales.credit')) !== false && $show_surcharge_precision;
         ?>
             <tr>
                 <td colspan="2" style="text-align: right;"><?= $splitpayment[0] ?> </td>
-                <td class="total-value"><?= to_currency($payment['payment_amount'] * -1) ?></td>
+                <?php if ($use_total_as_payment) {
+                    $payment_amount_display = to_currency_surcharge(bcmul(bcadd($subtotal, $cc_surcharge, cc_surcharge_decimals()), '-1', cc_surcharge_decimals()));
+                } else {
+                    $payment_amount_display = (strpos($payment['payment_type'], lang('Sales.credit')) !== false && $show_surcharge_precision)
+                        ? to_currency_surcharge($payment['payment_amount'] * -1)
+                        : to_currency($payment['payment_amount'] * -1);
+                }
+                ?>
+                <td class="total-value"><?= $payment_amount_display ?></td>
             </tr>
         <?php } ?>
 

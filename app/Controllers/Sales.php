@@ -455,6 +455,9 @@ class Sales extends Secure_Controller
                     $this->session->set('cash_mode', CASH_MODE_TRUE);
                     $this->sale_lib->add_payment(lang('Sales.cash_adjustment'), $cash_adjustment_amount, CASH_ADJUSTMENT_TRUE);
                 }
+            } elseif (strpos($payment_type, lang('Sales.credit')) !== false) {
+                $amount_tendered = parse_decimals($this->request->getPost('amount_tendered'), cc_surcharge_decimals());
+                $this->sale_lib->add_payment($payment_type, $amount_tendered);
             } else {
                 $amount_tendered = parse_decimals($this->request->getPost('amount_tendered'));
                 $this->sale_lib->add_payment($payment_type, $amount_tendered);
@@ -716,6 +719,7 @@ class Sales extends Secure_Controller
         $data['prediscount_subtotal'] = $totals['prediscount_subtotal'];
         $data['cash_total'] = $totals['cash_total'];
         $data['non_cash_total'] = $totals['total'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
 
@@ -1063,6 +1067,7 @@ class Sales extends Secure_Controller
         $data['prediscount_subtotal'] = $totals['prediscount_subtotal'];
         $data['cash_total'] = $totals['cash_total'];
         $data['non_cash_total'] = $totals['total'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
 
