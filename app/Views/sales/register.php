@@ -383,6 +383,14 @@ helper('url');
                 </div>
             <?php } ?>
         <?= form_close() ?>
+
+        <?php
+            $show_cc_precision = isset($cc_surcharge) && bccomp((string)$cc_surcharge, '0.0000', cc_surcharge_decimals()) !== 0;
+            $total_display = $show_cc_precision ? to_currency_surcharge($total) : to_currency($total);
+            $payments_total_display = $show_cc_precision ? to_currency_surcharge($payments_total) : to_currency($payments_total);
+            $amount_due_display = $show_cc_precision ? to_currency_surcharge($amount_due) : to_currency($amount_due);
+        ?>
+
     <div class="panel-body">
         <table class="sales_table_100" id="sale_totals">
             <tr>
@@ -401,11 +409,11 @@ helper('url');
             <?php } ?>
             <tr id="cc_surcharge_row" style="display: none;">
                 <th style="width: 55%;"><?= lang('Config.cc_surcharge') ?></th>
-                <th style="width: 45%; text-align: right;"><span id="cc_surcharge_display"><?= to_currency($cc_surcharge) ?></span></th>
+                <th style="width: 45%; text-align: right;"><span id="cc_surcharge_display"><?= to_currency_surcharge($cc_surcharge) ?></span></th>
             </tr>
             <tr>
                 <th style="width: 55%; font-size: 150%"><?= lang(ucfirst($controller_name) . '.total') ?></th>
-                <th style="width: 45%; font-size: 150%; text-align: right;"><span id="sale_total"><?= to_currency($total) ?></span></th>
+                <th style="width: 45%; font-size: 150%; text-align: right;"><span id="sale_total"><?= $total_display ?></span></th>
             </tr>
         </table>
 
@@ -413,11 +421,11 @@ helper('url');
             <table class="sales_table_100" id="payment_totals">
                 <tr>
                     <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.payments_total') ?></th>
-                    <th style="width: 45%; text-align: right;"><?= to_currency($payments_total) ?></th>
+                    <th style="width: 45%; text-align: right;"><?= $payments_total_display ?></th>
                 </tr>
                 <tr>
                     <th style="width: 55%; font-size: 120%"><?= lang(ucfirst($controller_name) . '.amount_due') ?></th>
-                    <th style="width: 45%; font-size: 120%; text-align: right;"><span id="sale_amount_due"><?= to_currency($amount_due) ?></span></th>
+                    <th style="width: 45%; font-size: 120%; text-align: right;"><span id="sale_amount_due"><?= $amount_due_display ?></span></th>
                 </tr>
             </table>
 
@@ -507,11 +515,15 @@ helper('url');
                         </thead>
 
                         <tbody id="payment_contents">
-                            <?php foreach ($payments as $payment_id => $payment) { ?>
+                            <?php foreach ($payments as $payment_id => $payment) {
+                                $payment_amount_formatted = (strpos($payment['payment_type'], lang('Sales.credit')) !== false)
+                                    ? to_currency_surcharge($payment['payment_amount'])
+                                    : to_currency($payment['payment_amount']);
+                            ?>
                                 <tr>
                                     <td><?= anchor("$controller_name/deletePayment/". base64url_encode($payment_id), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
                                     <td><?= $payment['payment_type'] ?></td>
-                                    <td style="text-align: right;"><?= to_currency($payment['payment_amount']) ?></td>
+                                    <td style="text-align: right;"><?= $payment_amount_formatted ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
@@ -848,12 +860,44 @@ helper('url');
             $('#cart_' + $(this).attr('data-line')).append($(input));
             $('#cart_' + $(this).attr('data-line')).submit();
         });
+
+        $("#amount_tendered").on('input change', check_payment_type);
     });
 
     function check_payment_type() {
         var cash_mode = <?= json_encode($cash_mode) ?>;
         var payment_type = $("#payment_types").val();
         var cc_surcharge = <?= json_encode($cc_surcharge) ?>;
+        var cc_surcharge_rate = <?= json_encode(cc_surcharge()) ?>;
+        var cc_surcharge_decimals = <?= json_encode(cc_surcharge_decimals()) ?>;
+        var currency_symbol = <?= json_encode($config['currency_symbol']) ?>;
+        var currency_symbol_right = <?= json_encode(is_right_side_currency_symbol()) ?>;
+        var base_total = <?= json_encode($non_cash_total) ?>;
+        var base_amount_due = <?= json_encode($amount_due) ?>;
+
+        function formatCurrency(value, decimals) {
+            var formatted = Number(value).toFixed(decimals);
+            if (currency_symbol_right) {
+                return formatted + currency_symbol;
+            }
+            return currency_symbol + formatted;
+        }
+
+        function getCcSurchargeForAmount(amount) {
+            var surcharge = (amount * parseFloat(cc_surcharge_rate)) / 100;
+            return parseFloat(surcharge.toFixed(cc_surcharge_decimals));
+        }
+
+        function updateCcSurchargePreview() {
+            var surcharge = parseFloat(cc_surcharge);
+            if (payment_type && payment_type.indexOf("<?= lang(ucfirst($controller_name) . '.credit') ?>") !== -1) {
+                var amount = parseFloat($("#amount_tendered").val().replace(/,/g, '')) || 0;
+                surcharge = getCcSurchargeForAmount(amount);
+            }
+
+            $("#cc_surcharge_display").html(formatCurrency(surcharge, cc_surcharge_decimals));
+            return surcharge;
+        }
 
         // Validate payment type selection
         if (payment_type == '') {
@@ -867,32 +911,46 @@ helper('url');
         // Show/hide CC surcharge row based on payment type
         if (payment_type && payment_type.indexOf("<?= lang(ucfirst($controller_name) . '.credit') ?>") !== -1) {
             $("#cc_surcharge_row").show();
+            var surcharge = updateCcSurchargePreview();
+            $("#sale_total").html(formatCurrency(parseFloat(base_total) + surcharge, cc_surcharge_decimals));
+            $("#sale_amount_due").html(formatCurrency(parseFloat(base_amount_due) + surcharge, cc_surcharge_decimals));
+            $("#amount_tendered:enabled").val((parseFloat(base_amount_due) + surcharge).toFixed(cc_surcharge_decimals));
+            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
+            $(".giftcard-input").attr('disabled', true);
+            $(".non-giftcard-input").attr('disabled', false);
         } else {
             $("#cc_surcharge_row").hide();
-        }
+            updateCcSurchargePreview();
 
-        if (payment_type == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
-            $("#sale_total").html("<?= to_currency($total) ?>");
-            $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
-            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.giftcard_number') ?>");
-            $("#amount_tendered:enabled").val('').focus();
-            $(".giftcard-input").attr('disabled', false);
-            $(".non-giftcard-input").attr('disabled', true);
-            $(".giftcard-input:enabled").val('').focus();
-        } else if ((payment_type == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
-            $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
-            $("#sale_amount_due").html("<?= to_currency($cash_amount_due) ?>");
-            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
-            $("#amount_tendered:enabled").val("<?= to_currency_no_money($cash_amount_due) ?>");
-            $(".giftcard-input").attr('disabled', true);
-            $(".non-giftcard-input").attr('disabled', false);
-        } else {
-            $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
-            $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
-            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
-            $("#amount_tendered:enabled").val("<?= to_currency_no_money($amount_due) ?>");
-            $(".giftcard-input").attr('disabled', true);
-            $(".non-giftcard-input").attr('disabled', false);
+            if (payment_type == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
+                $("#sale_total").html("<?= to_currency($total) ?>");
+                $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
+                $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.giftcard_number') ?>");
+                $("#amount_tendered:enabled").val('').focus();
+                $(".giftcard-input").attr('disabled', false);
+                $(".non-giftcard-input").attr('disabled', true);
+                $(".giftcard-input:enabled").val('').focus();
+            } else if ((payment_type == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
+                $("#sale_total").html("<?= to_currency($cash_total) ?>");
+                $("#sale_amount_due").html("<?= to_currency($cash_amount_due) ?>");
+                $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
+                $("#amount_tendered:enabled").val("<?= to_currency_no_money($cash_amount_due) ?>");
+                $(".giftcard-input").attr('disabled', true);
+                $(".non-giftcard-input").attr('disabled', false);
+            } else {
+                if (cc_surcharge !== '0' && cc_surcharge !== '0.0000') {
+                    $("#sale_total").html(formatCurrency(parseFloat(base_total), cc_surcharge_decimals));
+                    $("#sale_amount_due").html(formatCurrency(parseFloat(base_amount_due), cc_surcharge_decimals));
+                    $("#amount_tendered:enabled").val(parseFloat(base_amount_due).toFixed(cc_surcharge_decimals));
+                } else {
+                    $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
+                    $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
+                    $("#amount_tendered:enabled").val("<?= to_currency_no_money($amount_due) ?>");
+                }
+                $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
+                $(".giftcard-input").attr('disabled', true);
+                $(".non-giftcard-input").attr('disabled', false);
+            }
         }
     }
 
