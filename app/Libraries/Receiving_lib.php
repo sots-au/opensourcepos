@@ -137,6 +137,11 @@ class Receiving_lib
 
         return $this->session->get('recv_stock_source');
     }
+    
+    public function get_stock_source_id($location_name)
+	{
+		return $this->CI->Stock_location->get_location_id($location_name);
+	}
 
     /**
      * @return string

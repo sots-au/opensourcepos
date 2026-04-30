@@ -897,6 +897,11 @@ class Sale_lib
         $this->session->set('sales_location', $location);
     }
 
+    public function get_sale_location_id($location_name)
+	{
+		return $this->CI->Stock_location->get_location_id($location_name);
+
+	}
     /**
      * @param string $payment_type
      * @return void
@@ -1128,7 +1133,8 @@ class Sale_lib
                     'stock_type'            => $stock_type,
                     'item_type'             => $item_type,
                     'hsn_code'              => $item_info->hsn_code,
-                    'tax_category_id'       => $item_info->tax_category_id
+                    'tax_category_id'       => $item_info->tax_category_id,
+                    'category'              => $item_info->category
                 ]
             ];
 

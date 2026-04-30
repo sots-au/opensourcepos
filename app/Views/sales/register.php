@@ -125,7 +125,11 @@ helper('url');
                     <?= form_input(['name' => 'item', 'id' => 'item', 'class' => 'form-control input-sm', 'size' => '50', 'tabindex' => ++$tabindex]) ?>
                     <span class="ui-helper-hidden-accessible" role="status"></span>
                 </li>
-                <li class="pull-right">
+				<li class="pull-right btn-toolbar">
+				<button class='btn btn-info btn-sm pull-right modal-dlg' data-btn-submit='<?php echo lang('Common.submit') ?>' data-href='<?php echo site_url($controller_name."/csvImport"); ?>'
+        title='<?php echo lang('Sales.sales_import_items_csv'); ?>'>
+						<span class="glyphicon glyphicon-import">&nbsp</span><?php echo lang('Common.import_csv'); ?>
+					</button>
                     <button id="new_item_button" class="btn btn-info btn-sm pull-right modal-dlg" data-btn-new="<?= lang('Common.new') ?>" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "items/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_item") ?>">
                         <span class="glyphicon glyphicon-tag">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_item") ?>
                     </button>
@@ -179,7 +183,17 @@ helper('url');
                             <?php } else { ?>
                                 <td><?= esc($item['item_number']) ?></td>
                                 <td style="align: center;">
-                                    <?= esc($item['name']) . ' ' . implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']]) ?>
+                                    <?php 
+                                    // Display item name with limited attributes (only first 2 attribute values)
+                                    $display_name = esc($item['name']);
+                                    $attr_values = !empty($item['attribute_values']) ? explode(', ', $item['attribute_values']) : [];
+                                    // Limit to first 2 attributes
+                                    $limited_attrs = array_slice($attr_values, 0, 2);
+                                    if (!empty($limited_attrs)) {
+                                        $display_name .= ' ' . implode(', ', $limited_attrs);
+                                    }
+                                    echo $display_name;
+                                    ?>
                                     <br>
                                     <?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . $item['stock_name'] . ']';
                                     endif; ?>
@@ -210,9 +224,9 @@ helper('url');
 
                             <td>
                                 <div class="input-group">
-                                    <?= form_input(['name' => 'discount', 'class' => 'form-control input-sm', 'value' => $item['discount_type'] ? to_currency_no_money($item['discount']) : to_decimals($item['discount']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
+                                    <?= form_input(['name' => 'discount', 'class' => 'form-control input-sm', 'value' => $item['discount_type'] ? to_currency_no_money($item['discount']) : to_decimals($item['discount']), 'tabindex' => ++$tabindex, 'readonly' => 'readonly', 'disabled' => 'disabled']) ?>
                                     <span class="input-group-btn">
-                                        <?= form_checkbox(['id' => 'discount_toggle', 'name' => 'discount_toggle', 'value' => 1, 'data-toggle' => "toggle", 'data-size' => 'small', 'data-onstyle' => 'success', 'data-on' => '<b>' . $config['currency_symbol'] . '</b>', 'data-off' => '<b>%</b>', 'data-line' => $line, 'checked' => $item['discount_type'] == 1]) ?>
+                                        <?= form_checkbox(['id' => 'discount_toggle', 'name' => 'discount_toggle', 'value' => 1, 'data-toggle' => "toggle", 'data-size' => 'small', 'data-onstyle' => 'success', 'data-on' => '<b>' . $config['currency_symbol'] . '</b>', 'data-off' => '<b>%</b>', 'data-line' => $line, 'checked' => $item['discount_type'] == 1, 'disabled' => 'disabled']) ?>
                                     </span>
                                 </div>
                             </td>
@@ -353,18 +367,19 @@ helper('url');
                 )
                 ?>
             <?php } else { ?>
-                <div class="form-group" id="select_customer">
-                    <label id="customer_label" for="customer" class="control-label" style="margin-bottom: 1em; margin-top: -1em;">
+                <div class="form-group form-group-sm" id="select_customer" style="margin-bottom: 0;">
+                    <label id="customer_label" for="customer" class="control-label">
                         <?= lang(ucfirst($controller_name) . '.select_customer') . esc(" $customer_required") ?>
                     </label>
                     <?= form_input(['name' => 'customer', 'id' => 'customer', 'class' => 'form-control input-sm', 'value' => lang(ucfirst($controller_name) . '.start_typing_customer_name')]) ?>
-
-                    <button class="btn btn-info btn-sm modal-dlg" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "customers/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_customer") ?>">
-                        <span class="glyphicon glyphicon-user">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_customer") ?>
-                    </button>
-                    <button class="btn btn-default btn-sm modal-dlg" id="show_keyboard_help" data-href="<?= esc("$controller_name/salesKeyboardHelp") ?>" title="<?= lang(ucfirst($controller_name) . '.key_title') ?>">
-                        <span class="glyphicon glyphicon-share-alt">&nbsp;</span><?= lang(ucfirst($controller_name) . '.key_help') ?>
-                    </button>
+                    <div style="margin-top: 0.5em;">
+                        <button class="btn btn-info btn-sm modal-dlg" data-btn-submit="<?= lang('Common.submit') ?>" data-href="<?= "customers/view" ?>" title="<?= lang(ucfirst($controller_name) . ".new_customer") ?>">
+                            <span class="glyphicon glyphicon-user">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_customer") ?>
+                        </button>
+                        <button class="btn btn-default btn-sm modal-dlg" id="show_keyboard_help" data-href="<?= esc("$controller_name/salesKeyboardHelp") ?>" title="<?= lang(ucfirst($controller_name) . '.key_title') ?>">
+                            <span class="glyphicon glyphicon-share-alt">&nbsp;</span><?= lang(ucfirst($controller_name) . '.key_help') ?>
+                        </button>
+                    </div>
                 </div>
             <?php } ?>
         <?= form_close() ?>
@@ -376,6 +391,7 @@ helper('url');
             $amount_due_display = $show_cc_precision ? to_currency_surcharge($amount_due) : to_currency($amount_due);
         ?>
 
+    <div class="panel-body">
         <table class="sales_table_100" id="sale_totals">
             <tr>
                 <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.quantity_of_items', [$item_count]) ?></th>
@@ -469,6 +485,16 @@ helper('url');
                                     <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm non-giftcard-input', 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
                                     <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm giftcard-input', 'disabled' => true, 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex]) ?>
                                 </td>
+                            </tr>
+                            <tr id="payment-validation-error">
+                                <td></td>
+                                <td style="padding-top: 2px; padding-bottom: 4px; color: red;">
+                                    <?= lang(ucfirst($controller_name) . '.payment_type_required') ?? 'Please select a payment type' ?>
+                                </td>
+                            </tr>
+                            <tr id="payment-validation-no-error">
+                                <td>&nbsp;</td>
+                                <td style="padding-top: 2px; padding-bottom: 4px;">&nbsp;</td>
                             </tr>
                         </table>
                     <?= form_close() ?>
@@ -581,6 +607,9 @@ helper('url');
 
 <script type="text/javascript">
     $(document).ready(function() {
+        // hide the validation error on page load
+        $('#payment-validation-error').hide();
+
         const redirect = function() {
             window.location.href = "<?= site_url('sales'); ?>";
         };
@@ -764,8 +793,16 @@ helper('url');
             }
         });
 
-        $('#add_payment_button').click(function() {
-            $('#add_payment_form').submit();
+        $('#add_payment_button').click(function(event) {
+            if ($('#payment_types').val() == '') {
+                $('#payment-validation-error').show();
+                $('#payment-validation-no-error').hide();
+                event.preventDefault();
+            } else {
+                $('#payment-validation-error').hide();
+                $('#payment-validation-no-error').show();
+                $('#add_payment_form').submit();
+            }
         });
 
         $('#payment_types').change(check_payment_type).ready(check_payment_type);
@@ -860,6 +897,14 @@ helper('url');
 
             $("#cc_surcharge_display").html(formatCurrency(surcharge, cc_surcharge_decimals));
             return surcharge;
+
+        // Validate payment type selection
+        if (payment_type == '') {
+            $('#payment-validation-error').show();
+            $('#payment-validation-no-error').hide();
+        } else {
+            $('#payment-validation-error').hide();
+            $('#payment-validation-no-error').show();
         }
 
         // Show/hide CC surcharge row based on payment type

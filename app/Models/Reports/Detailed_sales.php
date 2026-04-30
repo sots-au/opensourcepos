@@ -44,21 +44,19 @@ class Detailed_sales extends Report
                 ['cost'                 => lang('Reports.cost'), 'sorter' => 'number_sorter'],
                 ['profit'               => lang('Reports.profit'), 'sorter' => 'number_sorter'],
                 ['payment_type'         => lang('Reports.payment_type'), 'sortable' => false],
-                ['stock_location'       => lang('Reports.stock_location')],
+                ['location_name'       => lang('Reports.stock_location')],
                 ['comment'              => lang('Reports.comments')]
             ],
             'details' => [
-                lang('Reports.name'),
+				lang('Reports.item_id'),
+				lang('Reports.item_name'),
+				lang('Reports.item_location'),
+				lang('Reports.item_code'),
+				lang('Reports.cost_price'),
+				lang('Reports.unit_price'),
                 lang('Reports.category'),
-                lang('Reports.item_number'),
-                lang('Reports.description'),
                 lang('Reports.quantity'),
-                lang('Reports.subtotal'),
-                lang('Reports.tax'),
-                lang('Reports.total'),
-                lang('Reports.cost'),
-                lang('Reports.profit'),
-                lang('Reports.discount')
+                lang('Reports.stock_location'),
             ],
             'details_rewards' => [
                 lang('Reports.used'),
@@ -125,8 +123,8 @@ class Detailed_sales extends Report
             SUM(cost) AS cost,
             SUM(profit) AS profit,
             MAX(payment_type) AS payment_type,
-            MAX(item_location) AS stock_location,
-            MAX(comment) AS comment');
+            MAX(comment) AS comment,
+			MAX(item_location) AS stock_location');
 
         if ($inputs['location_id'] != 'all') {    // TODO: Duplicated code
             $builder->where('item_location', $inputs['location_id']);
@@ -179,12 +177,16 @@ class Detailed_sales extends Report
         $data['rewards'] = [];
 
         foreach ($data['summary'] as $key => $value) {
+            $temp_table = $this->db->prefixTable('sales_items_temp');
             $builder = $this->db->table('sales_items_temp');
-            $builder->select('
+            $builder->select("
+                MAX($temp_table.item_id) AS item_id,
                 MAX(name) AS name,
                 MAX(category) AS category,
                 MAX(quantity_purchased) AS quantity_purchased,
                 MAX(item_location) AS item_location,
+                MAX(item_cost_price) AS item_cost_price, 
+                MAX(item_unit_price) AS item_unit_price,
                 MAX(item_number) AS item_number,
                 MAX(description) AS description,
                 MAX(subtotal) AS subtotal,
@@ -194,19 +196,19 @@ class Detailed_sales extends Report
                 MAX(profit) AS profit,
                 MAX(discount) AS discount,
                 MAX(discount_type) AS discount_type,
-                MAX(sale_status) AS sale_status');
+                MAX(sale_status) AS sale_status");
 
             if (count($inputs['definition_ids']) > 0) {
                 $format = $this->db->escape(dateformat_mysql());
                 $builder->select('GROUP_CONCAT(DISTINCT CONCAT_WS(\'_\', definition_id, attribute_value) ORDER BY definition_id SEPARATOR \'|\') AS attribute_values');
                 $builder->select("GROUP_CONCAT(DISTINCT CONCAT_WS('_', definition_id, DATE_FORMAT(attribute_date, $format)) SEPARATOR '|') AS attribute_dtvalues");
                 $builder->select('GROUP_CONCAT(DISTINCT CONCAT_WS(\'_\', definition_id, attribute_decimal) SEPARATOR \'|\') AS attribute_dvalues');
-                $builder->join('attribute_links', 'attribute_links.item_id = sales_items_temp.item_id AND attribute_links.sale_id = sales_items_temp.sale_id AND definition_id IN (' . implode(',', $inputs['definition_ids']) . ')', 'left');
+                $builder->join('attribute_links', "attribute_links.item_id = $temp_table.item_id AND attribute_links.sale_id = $temp_table.sale_id AND definition_id IN (" . implode(',', $inputs['definition_ids']) . ')', 'left');
                 $builder->join('attribute_values', 'attribute_values.attribute_id = attribute_links.attribute_id', 'left');
             }
 
-            $builder->groupBy('sales_items_temp.sale_id, sales_items_temp.item_id, sales_items_temp.sale_id');
-            $builder->where('sales_items_temp.sale_id', $value['sale_id']);
+            $builder->groupBy("$temp_table.sale_id, $temp_table.item_id, $temp_table.sale_id");
+            $builder->where("$temp_table.sale_id", $value['sale_id']);
             $data['details'][$key] = $builder->get()->getResultArray();
 
             $builder->select('used, earned');

@@ -17,7 +17,8 @@ class Summary_sales extends Summary_report
             ['tax'       => lang('Reports.tax'), 'sorter' => 'number_sorter'],
             ['total'     => lang('Reports.total'), 'sorter' => 'number_sorter'],
             ['cost'      => lang('Reports.cost'), 'sorter' => 'number_sorter'],
-            ['profit'    => lang('Reports.profit'), 'sorter' => 'number_sorter']
+            ['profit'    => lang('Reports.profit'), 'sorter' => 'number_sorter'],
+            ['location_name'    => lang('Reports.stock_location')]
         ];
     }
 
@@ -33,6 +34,7 @@ class Summary_sales extends Summary_report
         $builder->select('
                 DATE(sales.sale_time) AS sale_date,
                 SUM(sales_items.quantity_purchased) AS quantity_purchased,
+                sales_items.item_location AS location_id
                 COUNT(DISTINCT sales.sale_id) AS sales
         ');
     }
@@ -43,7 +45,7 @@ class Summary_sales extends Summary_report
      */
     protected function _group_order(object &$builder): void    // TODO: hungarian notation
     {
-        $builder->groupBy('sale_date');
-        $builder->orderBy('sale_date');
+        $builder->groupBy('sale_date, location_id');
+        $builder->orderBy('sale_date, location_id');
     }
 }

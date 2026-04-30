@@ -27,7 +27,7 @@ use stdClass;
 
 class Sales extends Secure_Controller
 {
-    protected $helpers = ['file'];
+    protected $helpers = ['file', 'importfile'];
     private Barcode_lib $barcode_lib;
     private Email_lib $email_lib;
     private Sale_lib $sale_lib;
@@ -464,6 +464,8 @@ class Sales extends Secure_Controller
             }
         }
 
+        // Need to set payment type here as it was coming blank in get_totals
+        $this->sale_lib->set_payment_type($payment_type);
         $this->_reload($data);
     }
 
@@ -586,9 +588,10 @@ class Sales extends Secure_Controller
             $price = parse_decimals($this->request->getPost('price'));
             $quantity = parse_decimals($this->request->getPost('quantity'));
             $discount_type = $this->request->getPost('discount_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $raw_discount = $this->request->getPost('discount') ?? '0';
             $discount = $discount_type
-                ? parse_quantity($this->request->getPost('discount'))
-                : parse_decimals($this->request->getPost('discount'));
+                ? parse_quantity($raw_discount)
+                : parse_decimals($raw_discount);
 
             $item_location = $this->request->getPost('location', FILTER_SANITIZE_NUMBER_INT);
             $discounted_total = $this->request->getPost('discounted_total') != ''
@@ -702,11 +705,6 @@ class Sales extends Secure_Controller
         $data['discount'] = $this->sale_lib->get_discount();
         $data['payments'] = $this->sale_lib->get_payments();
 
-        if (empty($data['payments'])) {
-            $data['error'] = lang('Sales.payment_type_required');
-            $this->_reload($data);
-            return;
-        }
 
         // Returns 'subtotal', 'total', 'cash_total', 'payment_total', 'amount_due', 'cash_amount_due', 'payments_cover_total'
         $totals = $this->sale_lib->get_totals($tax_details[0]);
@@ -722,10 +720,14 @@ class Sales extends Secure_Controller
         $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
-        if ($data['cash_mode']) {    // TODO: Convert this to ternary notation
+        if ($data['cash_rounding']) {
+            $data['total'] = $totals['cash_total'];
             $data['amount_due'] = $totals['cash_amount_due'];
         } else {
+            $data['total'] = $totals['total'];
             $data['amount_due'] = $totals['amount_due'];
         }
 
@@ -1070,6 +1072,8 @@ class Sales extends Secure_Controller
         $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
         $data['cash_amount_due'] = $totals['cash_amount_due'];
         $data['non_cash_amount_due'] = $totals['amount_due'];
+        $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
         if ($data['cash_mode'] && ($data['selected_payment_type'] === lang('Sales.cash') || $data['payments_total'] > 0)) {
             $data['total'] = $totals['cash_total'];
@@ -1170,6 +1174,7 @@ class Sales extends Secure_Controller
         $data['payments_total'] = $totals['payment_total'];
         $data['payments_cover_total'] = $totals['payments_cover_total'];
         $data['cc_surcharge'] = $totals['cc_surcharge'] ?? '0.0000';
+        $data['total_with_cc_surcharge'] = $totals['total_with_cc_surcharge'] ?? $totals['total'];
 
         // cash_mode indicates whether this sale is going to be processed using cash_rounding
         $cash_mode = $this->session->get('cash_mode');
@@ -1719,4 +1724,189 @@ class Sales extends Secure_Controller
 
         return null;
     }
+    	/*
+	 Items import from csv spreadsheet
+	 */
+	public function getCsv()
+	{
+		$name = 'import_sales_items.csv';
+		$data = $this->generate_import_sales_items_csv();
+		return $this->response->download($name, $data, false)
+			->setHeader('Content-Type', 'text/csv; charset=UTF-8');
+	}
+
+	public function getCsvImport()
+	{
+		echo view('sales/form_csv_import');
+	}
+
+	/**
+	 * Imports items from CSV formatted file.
+	 */
+	public function postDoCsvImport()
+	{
+		try {
+			$file = $this->request->getFile('file_path');
+			
+			if (!$file || $file->getError() != UPLOAD_ERR_OK) {
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
+				return;
+			}
+
+			if($file->isValid())
+			{
+				$line_array	= get_csv_file($file->getTempName());
+				if(empty($line_array)) {
+					echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_nodata_wrongformat')));
+					return;
+				}
+				
+				$failCodes	= array();
+				$debug_info = array();
+
+				$db = \Config\Database::connect();
+				$db->transBegin();
+				for($i = 0; $i < count($line_array); $i++)
+				{
+					$invalidated	= FALSE;
+					$line 			= $this->cleanArray($line_array[$i]);	//Clean the associative array from the CSV
+
+					$debug_info[$i] = "Row " . ($i+1) . ": ";
+
+					if(!empty($line))
+					{
+						$item_number   = $line['Id'] ?? '';
+						$item_quantity = $line['Quantity'] ?? '';
+						
+						if(empty($item_number) || empty($item_quantity)) {
+							$invalidated = TRUE;
+							$debug_info[$i] .= "Empty item_number or quantity. ";
+						} else {
+							$item_location = $this->sale_lib->get_sale_location();
+							$discount      = $this->config['default_sales_discount'] ?? 0;
+							$discount_type = $this->config['default_sales_discount_type'] ?? PERCENTAGE;
+
+							if(!$this->item->item_number_exists($item_number))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Item '$item_number' does not exist. ";
+							}
+
+							//Sanity check of data
+							if(!$invalidated)
+							{
+								$invalidated = $this->data_error_check($line);
+								if($invalidated) {
+									$debug_info[$i] .= "Data validation failed. ";
+								}
+							}
+
+							//Save to database
+							if(!$invalidated && !$this->sale_lib->add_item($item_number, $item_location, $item_quantity, $discount, $discount_type))
+							{
+								$invalidated = TRUE;
+								$debug_info[$i] .= "Failed to add item to database. ";
+							}
+						}
+					}
+					else
+					{
+						$invalidated = TRUE;
+						$debug_info[$i] .= "Empty line. ";
+					}
+
+					if($invalidated) {
+						$failed_row = $i+1;
+						$failCodes[] = $failed_row;
+					}
+				}
+
+				if(count($failCodes) > 0)
+				{
+					$message = lang('Items.csv_import_partially_failed', [count($failCodes), implode(', ', $failCodes)]);
+					$debug_msg = " Debug: " . implode(" | ", $debug_info);
+					$db->transRollback();
+					echo json_encode(array('success' => FALSE, 'message' => $message . $debug_msg));
+				}
+				else
+				{
+					$db->transCommit();
+					echo json_encode(array('success' => TRUE, 'message' => lang('Items.csv_import_success')));
+				}
+			}
+			else
+			{
+				echo json_encode(array('success' => FALSE, 'message' => lang('Items.csv_import_failed')));
+			}
+		} catch(\Exception $e) {
+			echo json_encode(array('success' => FALSE, 'message' => 'CSV Import Error: ' . $e->getMessage() . ' at line ' . $e->getLine()));
+		}
+	}
+
+	/**
+	 * Sanitize array values against XSS
+	 * 
+	 * @param	array	$data
+	 * @return	array	Cleaned array
+	 */
+	private function cleanArray($data)
+	{
+		$cleaned = array();
+		foreach($data as $key => $value) {
+			$cleaned[$key] = esc($value);
+		}
+		return $cleaned;
+	}
+
+	/**
+	 * Checks the entire line of data for errors
+	 *
+	 * @param	array	$line
+	 *
+	 * @return	bool	Returns FALSE if all data checks out and TRUE when there is an error in the data
+	 */
+	private function data_error_check($line)
+	{
+		//Check for empty required fields
+		$check_for_empty = array(
+			$line['Id'],
+			$line['Quantity']
+		);
+
+		if(in_array('',$check_for_empty,true))
+		{
+			log_message("ERROR","Empty required value");
+			return TRUE;	//Return fail on empty required fields
+		}
+
+		//Build array of fields to check for numerics
+		$check_for_numeric_values = array(
+			$line['Id'],
+			$line['Quantity']
+		);
+
+		//Check for non-numeric values which require numeric
+		foreach($check_for_numeric_values as $value)
+		{
+			if(!is_numeric($value) && $value != '')
+			{
+				log_message("ERROR","non-numeric: '$value' when numeric is required");
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * Generates the header content for the import_sales_items.csv file
+	 *
+	 * @return	string						Comma separated headers for the CSV file
+	 */
+	function generate_import_sales_items_csv()
+	{
+		$csv_headers = pack("CCC",0xef,0xbb,0xbf);	//Encode the Byte-Order Mark (BOM) so that UTF-8 File headers display properly in Microsoft Excel
+		$csv_headers .= 'Id,"Item Name","Item Location","Item Code",Language,Category,Quantity,"Stock Location"';
+		return $csv_headers;
+	}
 }

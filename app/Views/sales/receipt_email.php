@@ -59,7 +59,17 @@
             if ($item['print_option'] == PRINT_YES) {
         ?>
                 <tr>
-                    <td><?= esc(ucfirst($item['name'] . ' ' . $item['attribute_values'])) ?></td>
+                    <?php
+                        $display_name = $item['name'];
+                        if (!empty($item['attribute_values'])) {
+                            $attrs = array_map('trim', explode(',', $item['attribute_values']));
+                            $filtered = array_filter(array_slice($attrs, 0, 2), fn($v) => $v !== '');
+                            if (!empty($filtered)) {
+                                $display_name .= ' ' . implode(', ', $filtered);
+                            }
+                        }
+                    ?>
+                    <td><?= esc(ucfirst($display_name)) ?></td>
                     <td><?= to_currency($item['price']) ?></td>
                     <td><?= to_quantity_decimals($item['quantity']) ?></td>
                     <td style="text-align: right;"><?= to_currency($item[($config['receipt_show_total_discount'] ? 'total' : 'discounted_total')]) ?></td>

@@ -78,12 +78,7 @@
                 </div>
             </div>
         </div>
-
-        <div id="attributes">
-            <script type="text/javascript">
-                $('#attributes').load('<?= "items/attributes/$item_info->item_id" ?>');
-            </script>
-        </div>
+        <div id="attributes"></div>
 
         <div class="form-group form-group-sm">
             <?= form_label(lang('Items.stock_type'), 'stock_type', !empty($basic_version) ? ['class' => 'required control-label col-xs-3'] : ['class' => 'control-label col-xs-3']) ?>
@@ -454,6 +449,20 @@
 <script type="text/javascript">
     // Validation and submit handling
     $(document).ready(function() {
+        // Load attributes by default.
+	var definition_ids = <?php echo json_encode(array_keys($definition_names)) ?>;
+
+	var attribute_values = [];
+	$.each(definition_ids, function(index, value) {
+		if (value == -1) {  // Ignore placeholder attribute.
+			return;
+		}
+		attribute_values[value] = '';
+	});
+
+	$('#attributes').load('<?php echo site_url("items/attributes/$item_info->item_id");?>', {
+		'definition_ids': JSON.stringify(attribute_values)
+	});
         $('#new').click(function() {
             let stay_open = true;
             $('#item_form').submit();
