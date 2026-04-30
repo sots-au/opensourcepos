@@ -897,6 +897,7 @@ helper('url');
 
             $("#cc_surcharge_display").html(formatCurrency(surcharge, cc_surcharge_decimals));
             return surcharge;
+        }
 
         // Validate payment type selection
         if (payment_type == '') {
